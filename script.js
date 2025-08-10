@@ -12,6 +12,13 @@ function onOpenCvReady() {
 }
 
 function startCamera() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    console.error('getUserMedia is not supported on this browser.');
+    ctx.fillStyle = 'red';
+    ctx.fillText('getUserMedia is not supported on this browser.', 10, 20);
+    return;
+  }
+
   navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
     .then((stream) => {
       video.srcObject = stream;
@@ -28,7 +35,7 @@ function startCamera() {
     .catch((err) => {
       console.error('Error accessing camera:', err);
       ctx.fillStyle = 'red';
-      ctx.fillText('Error accessing camera', 10, 20);
+      ctx.fillText(`Error accessing camera: ${err.name}`, 10, 20);
     });
 }
 
