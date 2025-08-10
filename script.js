@@ -2,12 +2,19 @@ const video = document.createElement('video');
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 
+// Initial message while OpenCV loads
+ctx.fillStyle = 'white';
+ctx.font = '20px Arial';
+ctx.fillText('Loading OpenCV...', 10, 20);
+
 function onOpenCvReady() {
   if (cv) {
     console.log('OpenCV.js is ready.');
     startCamera();
   } else {
     console.error('OpenCV.js failed to load.');
+    ctx.fillStyle = 'red';
+    ctx.fillText('OpenCV.js failed to load.', 10, 20);
   }
 }
 
