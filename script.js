@@ -99,3 +99,5 @@ function processVideo() {
 
   requestAnimationFrame(process);
 }
+
+onOpenCvReady();
