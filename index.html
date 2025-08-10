@@ -8,11 +8,7 @@
     <link rel="stylesheet" href="style.css">
   </head>
   <body>
-    <div id="container">
-      <h1>AR Cube</h1>
-      <p>Point your camera at a Hiro marker to see the cube.</p>
-      <button id="start-button">Start AR</button>
-    </div>
+    
     <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;" vr-mode-ui="enabled: false">
       <a-marker preset="hiro">
         <a-box position="0 0.5 0" material="color: red;"></a-box>
