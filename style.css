@@ -1,16 +1,9 @@
 body {
-  font-family: sans-serif;
   margin: 0;
-  background-color: #f0f0f0;
+  overflow: hidden;
 }
 
-#container {
-  text-align: center;
-  padding: 2em;
-}
-
-a-scene {
-  display: block;
-  height: 100vh;
+canvas {
   width: 100vw;
+  height: 100vh;
 }
