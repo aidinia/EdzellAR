@@ -9,7 +9,7 @@ ctx.fillText('Loading OpenCV...', 10, 20);
 
 function onOpenCvReady() {
   if (cv) {
-    console.log('OpenCV.js is ready.');
+    console.log('OpenCV.js is ready...');
     startCamera();
   } else {
     console.error('OpenCV.js failed to load.');
