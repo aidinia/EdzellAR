@@ -1,103 +1,108 @@
-const video = document.createElement('video');
-const canvas = document.getElementById('canvas');
-const ctx = canvas.getContext('2d');
+let camera, scene, renderer, cube;
+let video;
 
-// Initial message while OpenCV loads
-ctx.fillStyle = 'white';
-ctx.font = '20px Arial';
-ctx.fillText('Loading OpenCV...', 10, 20);
+const startButton = document.getElementById('startAR');
+const arContainer = document.getElementById('arContainer');
+const canvas = document.getElementById('arCanvas');
 
-function onOpenCvReady() {
-  if (cv) {
-    console.log('OpenCV.js is ready.');
-    startCamera();
-  } else {
-    console.error('OpenCV.js failed to load.');
-    ctx.fillStyle = 'red';
-    ctx.fillText('OpenCV.js failed to load.', 10, 20);
-  }
-}
+startButton.addEventListener('click', startAR);
 
-function startCamera() {
-  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    console.error('getUserMedia is not supported on this browser.');
-    ctx.fillStyle = 'red';
-    ctx.fillText('getUserMedia is not supported on this browser.', 10, 20);
-    return;
-  }
-
-  navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
-    .then((stream) => {
-      video.srcObject = stream;
-      video.setAttribute('playsinline', true); // required for iOS
-      video.play();
-      video.addEventListener('loadedmetadata', () => {
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        ctx.fillStyle = 'white';
-        ctx.fillText('Camera started', 10, 20);
-        processVideo();
-      });
-    })
-    .catch((err) => {
-      console.error('Error accessing camera:', err);
-      ctx.fillStyle = 'red';
-      ctx.fillText(`Error accessing camera: ${err.name}`, 10, 20);
+async function startAR() {
+  try {
+    // Request camera permission and access
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment' }
     });
-}
 
-function processVideo() {
-  if (!cv) {
-    console.error('OpenCV is not ready.');
-    return;
+    // Hide button and show AR container
+    startButton.style.display = 'none';
+    arContainer.style.display = 'block';
+
+    // Create video element for camera feed
+    video = document.createElement('video');
+    video.srcObject = stream;
+    video.setAttribute('playsinline', true);
+    video.play();
+
+    // Wait for video to be ready
+    video.addEventListener('loadedmetadata', () => {
+      initThreeJS();
+      animate();
+    });
+
+  } catch (error) {
+    console.error('Error accessing camera:', error);
+    alert('Could not access camera. Please ensure you have granted camera permissions.');
+    startButton.style.display = 'block';
   }
-  const src = new cv.Mat(video.videoHeight, video.videoWidth, cv.CV_8UC4);
-  const cap = new cv.VideoCapture(video);
-
-  const process = () => {
-    try {
-      cap.read(src); // Read a frame from the video
-
-      const gray = new cv.Mat();
-      cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
-
-      const edges = new cv.Mat();
-      cv.Canny(gray, edges, 50, 150, 3);
-
-      const lines = new cv.Mat();
-      cv.HoughLinesP(edges, lines, 1, Math.PI / 180, 50, 50, 10);
-
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-      let lineCount = 0;
-      for (let i = 0; i < lines.rows; ++i) {
-        const startPoint = new cv.Point(lines.data32S[i * 4], lines.data32S[i * 4 + 1]);
-        const endPoint = new cv.Point(lines.data32S[i * 4 + 2], lines.data32S[i * 4 + 3]);
-
-        const angle = Math.atan2(endPoint.y - startPoint.y, endPoint.x - startPoint.x) * 180 / Math.PI;
-
-        if ((angle > 80 && angle < 100) || (angle < -80 && angle > -100)) { // Filter for vertical lines
-          lineCount++;
-          ctx.beginPath();
-          ctx.moveTo(startPoint.x, startPoint.y);
-          ctx.lineTo(endPoint.x, endPoint.y);
-          ctx.strokeStyle = 'red';
-          ctx.lineWidth = 2;
-          ctx.stroke();
-        }
-      }
-
-      ctx.fillStyle = 'white';
-      ctx.fillText(`Lines detected: ${lineCount}`, 10, 40);
-
-      requestAnimationFrame(process);
-    } catch (err) {
-      console.error(err);
-      requestAnimationFrame(process);
-    }
-  };
-
-  requestAnimationFrame(process);
 }
 
-onOpenCvReady();
+function initThreeJS() {
+  // Set up scene
+  scene = new THREE.Scene();
+
+  // Set up camera (perspective camera for 3D view)
+  const aspectRatio = window.innerWidth / window.innerHeight;
+  camera = new THREE.PerspectiveCamera(75, aspectRatio, 0.1, 1000);
+  camera.position.set(0, 0, 0);
+
+  // Set up renderer
+  renderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+
+  // Create video texture for background
+  const videoTexture = new THREE.VideoTexture(video);
+  videoTexture.minFilter = THREE.LinearFilter;
+  videoTexture.magFilter = THREE.LinearFilter;
+
+  const videoGeometry = new THREE.PlaneGeometry(2, 2);
+  const videoMaterial = new THREE.MeshBasicMaterial({
+    map: videoTexture,
+    side: THREE.DoubleSide
+  });
+  const videoMesh = new THREE.Mesh(videoGeometry, videoMaterial);
+  videoMesh.position.z = -2;
+  scene.add(videoMesh);
+
+  // Create the AR cube (0.2m x 0.2m x 0.2m)
+  const geometry = new THREE.BoxGeometry(0.2, 0.2, 0.2);
+  const material = new THREE.MeshPhongMaterial({
+    color: 0x00ff00,
+    transparent: true,
+    opacity: 0.8
+  });
+  cube = new THREE.Mesh(geometry, material);
+
+  // Position cube 1 meter in front of camera
+  cube.position.set(0, 0, -1);
+  scene.add(cube);
+
+  // Add lighting
+  const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+  scene.add(ambientLight);
+
+  const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+  directionalLight.position.set(1, 1, 1);
+  scene.add(directionalLight);
+
+  // Handle window resize
+  window.addEventListener('resize', onWindowResize);
+}
+
+function onWindowResize() {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+
+  // Rotate the cube for visual effect
+  if (cube) {
+    cube.rotation.x += 0.01;
+    cube.rotation.y += 0.01;
+  }
+
+  renderer.render(scene, camera);
+}

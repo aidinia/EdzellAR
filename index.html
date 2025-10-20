@@ -1,12 +1,18 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>Vertical Line Detection</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AR Cube Experience</title>
     <link rel="stylesheet" href="style.css">
   </head>
   <body>
-    <canvas id="canvas"></canvas>
-    <script src="https://docs.opencv.org/4.x/opencv.js"></script>
+    <button id="startAR">Start AR Experience</button>
+    <div id="arContainer" style="display: none;">
+      <canvas id="arCanvas"></canvas>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="script.js"></script>
   </body>
 </html>
