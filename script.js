@@ -1,23 +1,14 @@
-let camera, scene, renderer, textMesh;
+let camera, scene, renderer, textMesh, shapeMesh;
 let video;
-let opencvReady = false;
-let horizontalLines = [];
-let textVelocity = { x: 0, y: -0.005, z: 0 }; // Falling text
-let gravity = -0.0002;
 let latitude = 'Loading...';
 let longitude = 'Loading...';
+let longitudeValue = 0;
 
 const startButton = document.getElementById('startAR');
 const arContainer = document.getElementById('arContainer');
 const canvas = document.getElementById('arCanvas');
 
 startButton.addEventListener('click', startAR);
-
-// OpenCV ready callback
-window.onOpenCvReady = function() {
-  console.log('OpenCV.js is ready');
-  opencvReady = true;
-};
 
 // Get device location
 function getLocation() {
@@ -26,19 +17,24 @@ function getLocation() {
       (position) => {
         latitude = position.coords.latitude.toFixed(6);
         longitude = position.coords.longitude.toFixed(6);
+        longitudeValue = position.coords.longitude;
         updateTextMesh();
+        updateShape();
       },
       (error) => {
         console.error('Error getting location:', error);
         latitude = 'N/A';
         longitude = 'N/A';
+        longitudeValue = 0;
         updateTextMesh();
+        updateShape();
       },
       { enableHighAccuracy: true }
     );
   } else {
     latitude = 'N/A';
     longitude = 'N/A';
+    longitudeValue = 0;
     console.error('Geolocation is not supported');
   }
 }
@@ -104,6 +100,9 @@ function initThreeJS() {
   // Create initial text mesh
   createTextMesh();
 
+  // Create initial shape
+  createShape();
+
   // Add lighting
   const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
   scene.add(ambientLight);
@@ -147,23 +146,59 @@ function createTextMesh() {
 
   // Remove old text mesh if it exists
   if (textMesh) {
+    const oldPosition = textMesh.position.clone();
     scene.remove(textMesh);
-  }
 
-  // Create sprite (always faces camera)
-  textMesh = new THREE.Sprite(spriteMaterial);
-  textMesh.scale.set(0.8, 0.4, 1);
-  textMesh.position.set(0, 0.3, -1);
-  scene.add(textMesh);
+    // Create sprite (always faces camera)
+    textMesh = new THREE.Sprite(spriteMaterial);
+    textMesh.scale.set(0.8, 0.4, 1);
+    textMesh.position.copy(oldPosition);
+    scene.add(textMesh);
+  } else {
+    // Create sprite (always faces camera)
+    textMesh = new THREE.Sprite(spriteMaterial);
+    textMesh.scale.set(0.8, 0.4, 1);
+    textMesh.position.set(0, 0, -1);
+    scene.add(textMesh);
+  }
 }
 
 function updateTextMesh() {
   if (!textMesh) return;
   createTextMesh();
-  // Preserve the current position and velocity
-  if (textMesh) {
-    textMesh.position.y = textMesh.position.y || 0.3;
+}
+
+function createShape() {
+  // Remove old shape if it exists
+  if (shapeMesh) {
+    scene.remove(shapeMesh);
   }
+
+  let geometry;
+
+  // Check longitude value to decide shape
+  if (longitudeValue < -2.61900) {
+    // Create cube
+    geometry = new THREE.BoxGeometry(0.2, 0.2, 0.2);
+  } else {
+    // Create sphere
+    geometry = new THREE.SphereGeometry(0.1, 32, 32);
+  }
+
+  const material = new THREE.MeshPhongMaterial({
+    color: 0x0088ff,
+    transparent: true,
+    opacity: 0.8
+  });
+
+  shapeMesh = new THREE.Mesh(geometry, material);
+  shapeMesh.position.set(0, -0.3, -1); // Below the text
+  scene.add(shapeMesh);
+}
+
+function updateShape() {
+  if (!scene) return;
+  createShape();
 }
 
 function onWindowResize() {
@@ -172,126 +207,14 @@ function onWindowResize() {
   renderer.setSize(window.innerWidth, window.innerHeight);
 }
 
-function detectHorizontalLines() {
-  if (!opencvReady || !video || video.readyState !== video.HAVE_ENOUGH_DATA) {
-    return [];
-  }
-
-  try {
-    // Create a temporary canvas to process the video frame
-    const tempCanvas = document.createElement('canvas');
-    tempCanvas.width = video.videoWidth;
-    tempCanvas.height = video.videoHeight;
-    const tempCtx = tempCanvas.getContext('2d');
-    tempCtx.drawImage(video, 0, 0);
-
-    // Convert to OpenCV Mat
-    const src = cv.imread(tempCanvas);
-    const gray = new cv.Mat();
-    const edges = new cv.Mat();
-    const lines = new cv.Mat();
-
-    // Convert to grayscale
-    cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
-
-    // Edge detection
-    cv.Canny(gray, edges, 50, 150, 3);
-
-    // Detect lines using Hough Transform
-    cv.HoughLinesP(edges, lines, 1, Math.PI / 180, 50, 50, 10);
-
-    const detectedLines = [];
-
-    // Filter for horizontal lines
-    for (let i = 0; i < lines.rows; ++i) {
-      const startX = lines.data32S[i * 4];
-      const startY = lines.data32S[i * 4 + 1];
-      const endX = lines.data32S[i * 4 + 2];
-      const endY = lines.data32S[i * 4 + 3];
-
-      const angle = Math.atan2(endY - startY, endX - startX) * 180 / Math.PI;
-
-      // Filter for horizontal lines (angle close to 0 or 180 degrees)
-      if ((angle > -10 && angle < 10) || (angle > 170 || angle < -170)) {
-        // Normalize coordinates to range [-1, 1] for 3D space
-        const normalizedY = -((startY + endY) / 2 / video.videoHeight * 2 - 1) * 0.7;
-        detectedLines.push({
-          y: normalizedY,
-          startX: startX,
-          endX: endX,
-          midY: (startY + endY) / 2
-        });
-      }
-    }
-
-    // Clean up
-    src.delete();
-    gray.delete();
-    edges.delete();
-    lines.delete();
-
-    return detectedLines;
-
-  } catch (error) {
-    console.error('Error in line detection:', error);
-    return [];
-  }
-}
-
-function updateTextPhysics() {
-  if (!textMesh) return;
-
-  // Apply gravity
-  textVelocity.y += gravity;
-
-  // Update position
-  textMesh.position.x += textVelocity.x;
-  textMesh.position.y += textVelocity.y;
-  textMesh.position.z += textVelocity.z;
-
-  // Check collision with horizontal lines
-  const textBottom = textMesh.position.y - 0.2; // Bottom of text (half of height)
-
-  for (let line of horizontalLines) {
-    // Check if text is near the line's Y position
-    if (Math.abs(textBottom - line.y) < 0.05 && textVelocity.y < 0) {
-      // Bounce!
-      textVelocity.y = -textVelocity.y * 0.8; // Reverse velocity with dampening
-      textMesh.position.y = line.y + 0.2; // Reset position to be on the line
-
-      // Change text color briefly to show collision
-      textMesh.material.color.setHex(0xff0000);
-      setTimeout(() => {
-        // Recreate the text with original color
-        createTextMesh();
-      }, 100);
-
-      break;
-    }
-  }
-
-  // Keep text within bounds
-  if (textMesh.position.y < -0.8) {
-    textMesh.position.y = -0.8;
-    textVelocity.y = -textVelocity.y * 0.8;
-  }
-
-  if (textMesh.position.y > 0.8) {
-    textMesh.position.y = 0.8;
-    textVelocity.y = 0;
-  }
-}
-
 function animate() {
   requestAnimationFrame(animate);
 
-  // Detect horizontal lines every few frames for performance
-  if (Math.random() < 0.1) { // 10% of frames
-    horizontalLines = detectHorizontalLines();
+  // Rotate the shape for visual effect
+  if (shapeMesh) {
+    shapeMesh.rotation.x += 0.01;
+    shapeMesh.rotation.y += 0.01;
   }
-
-  // Update text physics and check collisions
-  updateTextPhysics();
 
   renderer.render(scene, camera);
 }
