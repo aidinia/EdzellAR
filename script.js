@@ -1,14 +1,35 @@
-let camera, scene, renderer, textMesh, shapeMesh;
+let camera, scene, renderer, textMesh, shapeMesh, treeMesh;
 let video;
 let latitude = 'Loading...';
 let longitude = 'Loading...';
 let longitudeValue = 0;
+let deviceHeading = 0; // Compass heading in degrees
 
 const startButton = document.getElementById('startAR');
 const arContainer = document.getElementById('arContainer');
 const canvas = document.getElementById('arCanvas');
 
 startButton.addEventListener('click', startAR);
+
+// Get device orientation (compass)
+function getOrientation() {
+  if (window.DeviceOrientationEvent) {
+    window.addEventListener('deviceorientationabsolute', (event) => {
+      if (event.alpha !== null) {
+        deviceHeading = event.alpha; // 0-360 degrees, 0 is North
+        updateTreePosition();
+      }
+    });
+
+    // Fallback for devices without absolute orientation
+    window.addEventListener('deviceorientation', (event) => {
+      if (event.alpha !== null && deviceHeading === 0) {
+        deviceHeading = 360 - event.alpha; // Adjust for standard compass
+        updateTreePosition();
+      }
+    });
+  }
+}
 
 // Get device location
 function getLocation() {
@@ -60,6 +81,7 @@ async function startAR() {
     video.addEventListener('loadedmetadata', () => {
       initThreeJS();
       getLocation();
+      getOrientation();
       animate();
     });
 
@@ -102,6 +124,9 @@ function initThreeJS() {
 
   // Create initial shape
   createShape();
+
+  // Create tree
+  createTree();
 
   // Add lighting
   const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
@@ -199,6 +224,64 @@ function createShape() {
 function updateShape() {
   if (!scene) return;
   createShape();
+}
+
+function createTree() {
+  // Remove old tree if it exists
+  if (treeMesh) {
+    scene.remove(treeMesh);
+  }
+
+  // Create a group to hold tree parts
+  treeMesh = new THREE.Group();
+
+  // Create trunk (brown cylinder)
+  const trunkGeometry = new THREE.CylinderGeometry(0.05, 0.08, 0.4, 8);
+  const trunkMaterial = new THREE.MeshPhongMaterial({ color: 0x8B4513 });
+  const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
+  trunk.position.y = 0.2; // Raise trunk up
+  treeMesh.add(trunk);
+
+  // Create foliage (green cone/sphere layers)
+  const foliageGeometry1 = new THREE.ConeGeometry(0.15, 0.3, 8);
+  const foliageMaterial = new THREE.MeshPhongMaterial({ color: 0x228B22 });
+  const foliage1 = new THREE.Mesh(foliageGeometry1, foliageMaterial);
+  foliage1.position.y = 0.5;
+  treeMesh.add(foliage1);
+
+  const foliageGeometry2 = new THREE.ConeGeometry(0.12, 0.25, 8);
+  const foliage2 = new THREE.Mesh(foliageGeometry2, foliageMaterial);
+  foliage2.position.y = 0.7;
+  treeMesh.add(foliage2);
+
+  const foliageGeometry3 = new THREE.ConeGeometry(0.09, 0.2, 8);
+  const foliage3 = new THREE.Mesh(foliageGeometry3, foliageMaterial);
+  foliage3.position.y = 0.85;
+  treeMesh.add(foliage3);
+
+  // Position tree 1 meter south (will be updated based on orientation)
+  updateTreePosition();
+
+  scene.add(treeMesh);
+}
+
+function updateTreePosition() {
+  if (!treeMesh) return;
+
+  // South is 180 degrees
+  // Calculate the angle to place tree 1 meter south
+  const southAngle = 180;
+
+  // Calculate offset based on device heading
+  // We want the tree to be south relative to real-world, not device
+  const angleToSouth = (southAngle - deviceHeading) * (Math.PI / 180);
+
+  // Place tree 1 meter away in the south direction
+  const distance = 1;
+  const x = Math.sin(angleToSouth) * distance;
+  const z = -Math.cos(angleToSouth) * distance - 1; // -1 to account for camera offset
+
+  treeMesh.position.set(x, -0.5, z);
 }
 
 function onWindowResize() {
