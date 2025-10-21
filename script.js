@@ -1,9 +1,11 @@
-let camera, scene, renderer, cube;
+let camera, scene, renderer, textMesh;
 let video;
 let opencvReady = false;
 let horizontalLines = [];
-let cubeVelocity = { x: 0, y: -0.005, z: 0 }; // Falling cube
+let textVelocity = { x: 0, y: -0.005, z: 0 }; // Falling text
 let gravity = -0.0002;
+let latitude = 'Loading...';
+let longitude = 'Loading...';
 
 const startButton = document.getElementById('startAR');
 const arContainer = document.getElementById('arContainer');
@@ -16,6 +18,30 @@ window.onOpenCvReady = function() {
   console.log('OpenCV.js is ready');
   opencvReady = true;
 };
+
+// Get device location
+function getLocation() {
+  if (navigator.geolocation) {
+    navigator.geolocation.watchPosition(
+      (position) => {
+        latitude = position.coords.latitude.toFixed(6);
+        longitude = position.coords.longitude.toFixed(6);
+        updateTextMesh();
+      },
+      (error) => {
+        console.error('Error getting location:', error);
+        latitude = 'N/A';
+        longitude = 'N/A';
+        updateTextMesh();
+      },
+      { enableHighAccuracy: true }
+    );
+  } else {
+    latitude = 'N/A';
+    longitude = 'N/A';
+    console.error('Geolocation is not supported');
+  }
+}
 
 async function startAR() {
   try {
@@ -37,6 +63,7 @@ async function startAR() {
     // Wait for video to be ready
     video.addEventListener('loadedmetadata', () => {
       initThreeJS();
+      getLocation();
       animate();
     });
 
@@ -74,21 +101,11 @@ function initThreeJS() {
   videoMesh.position.z = -2;
   scene.add(videoMesh);
 
-  // Create the AR cube (0.2m x 0.2m x 0.2m)
-  const geometry = new THREE.BoxGeometry(0.2, 0.2, 0.2);
-  const material = new THREE.MeshPhongMaterial({
-    color: 0x00ff00,
-    transparent: true,
-    opacity: 0.8
-  });
-  cube = new THREE.Mesh(geometry, material);
-
-  // Position cube 1 meter in front of camera
-  cube.position.set(0, 0.3, -1);
-  scene.add(cube);
+  // Create initial text mesh
+  createTextMesh();
 
   // Add lighting
-  const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+  const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
   scene.add(ambientLight);
 
   const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
@@ -97,6 +114,56 @@ function initThreeJS() {
 
   // Handle window resize
   window.addEventListener('resize', onWindowResize);
+}
+
+function createTextMesh() {
+  // Create canvas for text texture
+  const textCanvas = document.createElement('canvas');
+  const context = textCanvas.getContext('2d');
+  textCanvas.width = 1024;
+  textCanvas.height = 512;
+
+  // Draw text on canvas
+  context.fillStyle = '#00ff00';
+  context.font = 'bold 60px Arial';
+  context.textAlign = 'center';
+  context.textBaseline = 'middle';
+
+  const text = `Lat: ${latitude}\nLon: ${longitude}`;
+  const lines = text.split('\n');
+  lines.forEach((line, index) => {
+    context.fillText(line, textCanvas.width / 2, textCanvas.height / 2 - 40 + index * 80);
+  });
+
+  // Create texture from canvas
+  const texture = new THREE.CanvasTexture(textCanvas);
+
+  // Create sprite material with the texture
+  const spriteMaterial = new THREE.SpriteMaterial({
+    map: texture,
+    transparent: true,
+    opacity: 0.9
+  });
+
+  // Remove old text mesh if it exists
+  if (textMesh) {
+    scene.remove(textMesh);
+  }
+
+  // Create sprite (always faces camera)
+  textMesh = new THREE.Sprite(spriteMaterial);
+  textMesh.scale.set(0.8, 0.4, 1);
+  textMesh.position.set(0, 0.3, -1);
+  scene.add(textMesh);
+}
+
+function updateTextMesh() {
+  if (!textMesh) return;
+  createTextMesh();
+  // Preserve the current position and velocity
+  if (textMesh) {
+    textMesh.position.y = textMesh.position.y || 0.3;
+  }
 }
 
 function onWindowResize() {
@@ -171,51 +238,48 @@ function detectHorizontalLines() {
   }
 }
 
-function updateCubePhysics() {
-  if (!cube) return;
+function updateTextPhysics() {
+  if (!textMesh) return;
 
   // Apply gravity
-  cubeVelocity.y += gravity;
+  textVelocity.y += gravity;
 
   // Update position
-  cube.position.x += cubeVelocity.x;
-  cube.position.y += cubeVelocity.y;
-  cube.position.z += cubeVelocity.z;
+  textMesh.position.x += textVelocity.x;
+  textMesh.position.y += textVelocity.y;
+  textMesh.position.z += textVelocity.z;
 
   // Check collision with horizontal lines
-  const cubeBottom = cube.position.y - 0.1; // Bottom of cube (half of height)
+  const textBottom = textMesh.position.y - 0.2; // Bottom of text (half of height)
 
   for (let line of horizontalLines) {
-    // Check if cube is near the line's Y position
-    if (Math.abs(cubeBottom - line.y) < 0.05 && cubeVelocity.y < 0) {
+    // Check if text is near the line's Y position
+    if (Math.abs(textBottom - line.y) < 0.05 && textVelocity.y < 0) {
       // Bounce!
-      cubeVelocity.y = -cubeVelocity.y * 0.8; // Reverse velocity with dampening
-      cube.position.y = line.y + 0.1; // Reset position to be on the line
+      textVelocity.y = -textVelocity.y * 0.8; // Reverse velocity with dampening
+      textMesh.position.y = line.y + 0.2; // Reset position to be on the line
 
-      // Change cube color briefly to show collision
-      cube.material.color.setHex(0xff0000);
+      // Change text color briefly to show collision
+      textMesh.material.color.setHex(0xff0000);
       setTimeout(() => {
-        cube.material.color.setHex(0x00ff00);
+        // Recreate the text with original color
+        createTextMesh();
       }, 100);
 
       break;
     }
   }
 
-  // Keep cube within bounds
-  if (cube.position.y < -0.8) {
-    cube.position.y = -0.8;
-    cubeVelocity.y = -cubeVelocity.y * 0.8;
+  // Keep text within bounds
+  if (textMesh.position.y < -0.8) {
+    textMesh.position.y = -0.8;
+    textVelocity.y = -textVelocity.y * 0.8;
   }
 
-  if (cube.position.y > 0.8) {
-    cube.position.y = 0.8;
-    cubeVelocity.y = 0;
+  if (textMesh.position.y > 0.8) {
+    textMesh.position.y = 0.8;
+    textVelocity.y = 0;
   }
-
-  // Rotate the cube
-  cube.rotation.x += 0.02;
-  cube.rotation.y += 0.02;
 }
 
 function animate() {
@@ -226,8 +290,8 @@ function animate() {
     horizontalLines = detectHorizontalLines();
   }
 
-  // Update cube physics and check collisions
-  updateCubePhysics();
+  // Update text physics and check collisions
+  updateTextPhysics();
 
   renderer.render(scene, camera);
 }
