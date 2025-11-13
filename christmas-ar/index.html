@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Christmas AR Neighborhood</title>
+    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="splash-screen">
+        <div class="splash-content">
+            <h1>🎄 Christmas AR Neighborhood 🎄</h1>
+            <p>Experience magical Christmas decorations in augmented reality!</p>
+            <button id="start-btn">Start AR Experience</button>
+            <div class="instructions">
+                <h3>Instructions:</h3>
+                <ul>
+                    <li>Allow camera and location permissions</li>
+                    <li>Point your camera around to see decorations</li>
+                    <li>Walk around your neighborhood to discover more!</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div id="loading-screen" style="display: none;">
+        <div class="loading-content">
+            <div class="spinner"></div>
+            <p>Loading AR Experience...</p>
+            <p class="small">Please allow camera and location permissions</p>
+        </div>
+    </div>
+
+    <a-scene
+        id="ar-scene"
+        vr-mode-ui="enabled: false"
+        arjs="sourceType: webcam; videoTexture: true; debugUIEnabled: false; sourceWidth:1280; sourceHeight:960; displayWidth: 1280; displayHeight: 960;"
+        renderer="logarithmicDepthBuffer: true; precision: medium;"
+        embedded
+        gesture-detector
+        style="display: none;">
+
+        <a-camera gps-camera rotation-reader look-controls-enabled="false"></a-camera>
+
+        <!-- Decorations will be added dynamically by JavaScript -->
+    </a-scene>
+
+    <div id="info-panel">
+        <div id="distance-info"></div>
+        <div id="decoration-count">Decorations nearby: 0</div>
+    </div>
+
+    <script src="decorations.js"></script>
+    <script src="app.js"></script>
+
+</body>
+</html>
