@@ -166,9 +166,9 @@ function add10meters(lat, longi, posLat, posLong){
     }
 
     if(longi && posLong){
-        newLong = lat + (0.01 / r_earth) * (180 / Math.PI) / cos(lat * Math.PI/180);
+        newLong = lat + (0.01 / r_earth) * (180 / Math.PI) / Math.cos(lat * Math.PI/180);
     }else if(longi){
-        newLong = lat - (0.01 / r_earth) * (180 / Math.PI) / cos(lat * Math.PI/180);
+        newLong = lat - (0.01 / r_earth) * (180 / Math.PI) / Math.cos(lat * Math.PI/180);
     }
     return {lat:newLat, lon:newLong}
 }
