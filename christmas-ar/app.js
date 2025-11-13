@@ -45,6 +45,9 @@ async function requestLocationPermission() {
                 userLocation.lat = position.coords.latitude;
                 userLocation.lon = position.coords.longitude;
                 console.log('User location:', userLocation);
+                var p = document.createElement("p");
+                p.innerText = position.coords.latitude; + " --- " position.coords.longitude;
+                document.getElementById("splash-screen").appendChild(p);
                 resolve();
             },
             (error) => {
