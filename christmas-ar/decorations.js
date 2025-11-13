@@ -4,8 +4,8 @@
 const christmasDecorations = [
     {
         id: 'tree-1',
-        lat: 0, // REPLACE WITH YOUR LATITUDE
-        lon: 0, // REPLACE WITH YOUR LONGITUDE
+        lat: 56.8492032,
+        lon: -2.6443776,
         type: 'tree',
         scale: '10 10 10',
         name: 'Giant Christmas Tree',
@@ -13,7 +13,7 @@ const christmasDecorations = [
     },
     {
         id: 'santa-1',
-        lat: 0.0001, // REPLACE - Example: offset from first location
+        lat: add10meters(56.8492032, -2.6443776, true), // REPLACE - Example: offset from first location
         lon: 0.0001, // REPLACE
         type: 'santa',
         scale: '5 5 5',
@@ -155,4 +155,13 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 
     return R * c;
+}
+
+function add10meters(lat, longi, posLat, posLong){
+    var newLat, newLong, r_earth = 6378;
+    if(posLat){
+        newLat  = lat  + (0.01 / r_earth) * (180 / pi);
+
+    }
+    console.log(lat, newLat);
 }
