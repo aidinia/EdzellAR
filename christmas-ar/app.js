@@ -34,6 +34,9 @@ async function startARExperience() {
 }
 
 async function requestLocationPermission() {
+         var p = document.createElement("p");
+                p.innerText = "Requesting Location";
+                document.getElementById("splash-screen").appendChild(p);
     return new Promise((resolve, reject) => {
         if (!navigator.geolocation) {
             reject(new Error('Geolocation not supported'));
