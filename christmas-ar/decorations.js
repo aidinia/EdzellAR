@@ -13,8 +13,8 @@ const christmasDecorations = [
     },
     {
         id: 'santa-1',
-        lat: add10meters(56.8492032, -2.6443776, true), // REPLACE - Example: offset from first location
-        lon: 0.0001, // REPLACE
+        lat: add10meters(56.8492032, -2.6443776, true, true).lat, // REPLACE - Example: offset from first location
+        lon: add10meters(56.8492032, -2.6443776, true, true).lon, // REPLACE
         type: 'santa',
         scale: '5 5 5',
         name: 'Santa Claus',
@@ -159,9 +159,16 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
 
 function add10meters(lat, longi, posLat, posLong){
     var newLat, newLong, r_earth = 6378;
-    if(posLat){
-        newLat  = lat  + (0.01 / r_earth) * (180 / pi);
-
+    if(lat && posLat){
+        newLat  = lat  + (0.01 / r_earth) * (180 / Math.PI);
+    }else if(lat){
+       newLat  = lat  - (0.01 / r_earth) * (180 / Math.PI);
     }
-    console.log(lat, newLat);
+
+    if(longi && posLong){
+        newLong = lat + (0.01 / r_earth) * (180 / Math.PI) / cos(lat * Math.PI/180);
+    }else if(longi){
+        newLong = lat - (0.01 / r_earth) * (180 / Math.PI) / cos(lat * Math.PI/180);
+    }
+    return {lat:newLat, lon:newLong}
 }
