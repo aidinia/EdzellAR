@@ -6,8 +6,12 @@
 
 body {
     font-family: 'Arial', sans-serif;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #000000;
     overflow: hidden;
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100vh;
 }
 
 /* Splash Screen */
@@ -22,7 +26,6 @@ body {
     justify-content: center;
     align-items: center;
     z-index: 1000;
-    animation: snowfall 10s linear infinite;
 }
 
 .splash-content {
@@ -142,8 +145,20 @@ body {
 
 /* AR Scene */
 #ar-scene {
+    position: fixed;
+    top: 0;
+    left: 0;
     width: 100%;
     height: 100vh;
+    z-index: 1;
+}
+
+#ar-scene canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100% !important;
+    height: 100% !important;
 }
 
 /* Info Panel */
@@ -157,10 +172,11 @@ body {
     padding: 15px 25px;
     border-radius: 10px;
     backdrop-filter: blur(10px);
-    z-index: 100;
+    z-index: 1000;
     font-size: 0.9rem;
     max-width: 90%;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    pointer-events: none;
 }
 
 #distance-info {

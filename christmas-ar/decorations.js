@@ -13,8 +13,8 @@ const christmasDecorations = [
     },
     {
         id: 'santa-1',
-        lat: add10meters(56.8492032, -2.6443776, true, true).lat, // REPLACE - Example: offset from first location
-        lon: add10meters(56.8492032, -2.6443776, true, true).lon, // REPLACE
+        lat: 56.815530, // REPLACE - Example: offset from first location
+        lon: -2.619078, // REPLACE
         type: 'santa',
         scale: '5 5 5',
         name: 'Santa Claus',
@@ -22,8 +22,8 @@ const christmasDecorations = [
     },
     {
         id: 'snowman-1',
-        lat: -0.0001, // REPLACE
-        lon: 0.0001, // REPLACE
+        lat: -56.816052,  // REPLACE
+        lon: -2.620111, // REPLACE
         type: 'snowman',
         scale: '4 4 4',
         name: 'Snowman',
@@ -31,8 +31,8 @@ const christmasDecorations = [
     },
     {
         id: 'present-1',
-        lat: 0.0001, // REPLACE
-        lon: -0.0001, // REPLACE
+        lat: 56.815711, // REPLACE
+        lon:  -2.618864, // REPLACE
         type: 'present',
         scale: '3 3 3',
         name: 'Gift Box',
@@ -40,8 +40,8 @@ const christmasDecorations = [
     },
     {
         id: 'star-1',
-        lat: -0.0001, // REPLACE
-        lon: -0.0001, // REPLACE
+        lat: 56.815325,  // REPLACE
+        lon: -2.618770, // REPLACE
         type: 'star',
         scale: '2 2 2',
         name: 'Christmas Star',
@@ -157,18 +157,3 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
     return R * c;
 }
 
-function add10meters(lat, longi, posLat, posLong){
-    var newLat, newLong, r_earth = 6378;
-    if(lat && posLat){
-        newLat  = lat  + (0.01 / r_earth) * (180 / Math.PI);
-    }else if(lat){
-       newLat  = lat  - (0.01 / r_earth) * (180 / Math.PI);
-    }
-
-    if(longi && posLong){
-        newLong = lat + (0.01 / r_earth) * (180 / Math.PI) / Math.cos(lat * Math.PI/180);
-    }else if(longi){
-        newLong = lat - (0.01 / r_earth) * (180 / Math.PI) / Math.cos(lat * Math.PI/180);
-    }
-    return {lat:newLat, lon:newLong}
-}
