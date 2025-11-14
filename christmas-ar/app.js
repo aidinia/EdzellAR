@@ -83,8 +83,18 @@ function initializeAR() {
 
 function onSceneLoaded() {
     console.log('AR Scene loaded');
-    updateStatus('AR Scene loaded. Preparing decorations...');
-    loadDecorations();
+    updateStatus('TAP SCREEN to place decoration at your location!');
+
+    // Update debug overlay
+    document.getElementById('debug-overlay').innerHTML = `
+        TAP ANYWHERE<br>
+        to place decoration!<br>
+        <small>Your location: ${userLocation.lat.toFixed(6)}, ${userLocation.lon.toFixed(6)}</small>
+    `;
+
+    // Add tap listener to place decorations
+    document.addEventListener('click', placeDecorationAtCurrentLocation);
+
     startLocationTracking();
 }
 
@@ -104,105 +114,81 @@ function updateStatus(message) {
     console.log('STATUS:', message);
 }
 
-function loadDecorations() {
-    if (decorationsLoaded) return;
+let placedDecorationCount = 0;
 
-    console.log('Loading decorations...');
-    console.log('TEST_MODE:', TEST_MODE);
-    console.log('User location:', userLocation);
-
-    // In test mode, wait for valid GPS coordinates
-    if (TEST_MODE && (userLocation.lat === 0 || userLocation.lon === 0)) {
-        console.warn('Waiting for GPS lock in TEST_MODE...');
-        updateStatus(`Waiting for GPS lock... (${userLocation.lat.toFixed(6)}, ${userLocation.lon.toFixed(6)})`);
-        setTimeout(loadDecorations, 1000);
+function placeDecorationAtCurrentLocation() {
+    if (userLocation.lat === 0 || userLocation.lon === 0) {
+        alert('Waiting for GPS lock...');
         return;
     }
 
-    updateStatus(`Loading decorations at your location (${userLocation.lat.toFixed(4)}, ${userLocation.lon.toFixed(4)})...`);
+    // Use the first decoration as template, cycle through types
+    const decorationTypes = ['tree', 'santa', 'snowman', 'present', 'star'];
+    const colors = ['#0f0', '#f00', '#fff', '#ff0', '#ffd700'];
+    const typeIndex = placedDecorationCount % decorationTypes.length;
 
-    // In test mode, only load the first decoration for easier testing
-    const decorationsToLoad = TEST_MODE ? christmasDecorations.slice(0, 1) : christmasDecorations;
+    const decoration = {
+        id: `placed-${placedDecorationCount}`,
+        lat: userLocation.lat,
+        lon: userLocation.lon,
+        type: decorationTypes[typeIndex],
+        scale: '10 10 10',
+        name: decorationTypes[typeIndex].charAt(0).toUpperCase() + decorationTypes[typeIndex].slice(1),
+        color: colors[typeIndex]
+    };
 
-    decorationsToLoad.forEach((decoration, index) => {
-        // Skip decorations with default 0,0 coordinates
-        if (decoration.lat === 0 && decoration.lon === 0 && index > 0) {
-            console.warn(`Skipping ${decoration.name} - please set GPS coordinates`);
-            return;
-        }
+    placeDecoration(decoration, 0);
+    placedDecorationCount++;
+}
 
-        let lat, lon;
+function placeDecoration(decoration, index) {
+    const lat = decoration.lat;
+    const lon = decoration.lon;
 
-        if (TEST_MODE) {
-            // In test mode, place decorations around the user's current location
-            // Each decoration is offset by ~10-20 meters in different directions
-            const offsetLat = (index - 2) * 0.00001; // ~11 meters per 0.0001 degrees latitude
-            const offsetLon = (index % 2 === 0 ? 1 : -1) * 0.00001;
+    // Create container for the decoration
+    const entity = document.createElement('a-entity');
+    entity.setAttribute('id', decoration.id);
+    entity.setAttribute('gps-entity-place', `latitude: ${lat}; longitude: ${lon}`);
+    entity.setAttribute('scale', decoration.scale);
 
-            lat = userLocation.lat + offsetLat;
-            lon = userLocation.lon + offsetLon;
+    // Add the decoration model
+    const model = getDecorationModel(decoration.type, decoration.color, decoration.scale);
+    entity.innerHTML = model;
 
-            console.log(`TEST MODE: Placing ${decoration.name} at offset (${offsetLat}, ${offsetLon})`);
-        } else {
-            // Use exact coordinates from decorations.js
-            lat = decoration.lat;
-            lon = decoration.lon;
-        }
-
-        // Create container for the decoration
-        const entity = document.createElement('a-entity');
-        entity.setAttribute('id', decoration.id);
-        entity.setAttribute('gps-entity-place', `latitude: ${lat}; longitude: ${lon}`);
-        entity.setAttribute('scale', decoration.scale);
-
-        // Add the decoration model
-        const model = getDecorationModel(decoration.type, decoration.color, decoration.scale);
-        entity.innerHTML = model;
-
-        // Add animation
-        entity.setAttribute('animation', {
-            property: 'rotation',
-            to: '0 360 0',
-            loop: true,
-            dur: 10000,
-            easing: 'linear'
-        });
-
-        // Add look-at behavior (face the user)
-        entity.setAttribute('look-at', '[gps-camera]');
-
-        // Add click event for info
-        entity.addEventListener('click', () => {
-            showDecorationInfo(decoration);
-        });
-
-        scene.appendChild(entity);
-
-        const distance = calculateDistance(userLocation.lat, userLocation.lon, lat, lon);
-        console.log(`Added decoration: ${decoration.name} at ${lat}, ${lon}`);
-        console.log(`Distance from user: ${Math.round(distance)}m`);
-
-        // Update debug overlay
-        document.getElementById('debug-overlay').innerHTML = `
-            DECORATION LOADED!<br>
-            ${decoration.name}<br>
-            Your Pos: ${userLocation.lat.toFixed(6)}, ${userLocation.lon.toFixed(6)}<br>
-            Decor Pos: ${lat.toFixed(6)}, ${lon.toFixed(6)}<br>
-            Distance: ${Math.round(distance)}m<br>
-            <small>Look ${distance > 20 ? 'far' : 'around'} to see it!</small>
-        `;
-
-        updateStatus(`Loaded ${index + 1}/${decorationsToLoad.length}: ${decoration.name}\nDistance: ${Math.round(distance)}m`);
+    // Add animation
+    entity.setAttribute('animation', {
+        property: 'rotation',
+        to: '0 360 0',
+        loop: true,
+        dur: 10000,
+        easing: 'linear'
     });
 
-    decorationsLoaded = true;
+    // Add look-at behavior (face the user)
+    entity.setAttribute('look-at', '[gps-camera]');
 
-    // Final status message
-    setTimeout(() => {
-        const mode = TEST_MODE ? '🧪 TEST' : '📍 LIVE';
-        const info = `${mode} | Decorations: ${decorationsToLoad.length}\n✅ Look around!`;
-        updateStatus(info);
-    }, 500);
+    // Add click event for info
+    entity.addEventListener('click', () => {
+        showDecorationInfo(decoration);
+    });
+
+    scene.appendChild(entity);
+
+    const distance = calculateDistance(userLocation.lat, userLocation.lon, lat, lon);
+    console.log(`Added decoration: ${decoration.name} at ${lat}, ${lon}`);
+    console.log(`Distance from user: ${Math.round(distance)}m`);
+
+    // Update debug overlay
+    document.getElementById('debug-overlay').innerHTML = `
+        DECORATION PLACED!<br>
+        ${decoration.name} #${placedDecorationCount}<br>
+        Your Pos: ${userLocation.lat.toFixed(6)}, ${userLocation.lon.toFixed(6)}<br>
+        Decor Pos: ${lat.toFixed(6)}, ${lon.toFixed(6)}<br>
+        Distance: ${Math.round(distance)}m<br>
+        <small>TAP AGAIN to place another!</small>
+    `;
+
+    updateStatus(`Placed: ${decoration.name}\nDistance: ${Math.round(distance)}m\nTap to place more!`);
 }
 
 function startLocationTracking() {
