@@ -176,8 +176,8 @@ function updateDistanceInfo() {
             <br><br>
              <strong>Your position:</strong> ${userLocation.lat} - ,
             ${userLocation.lon}<br> 
-            <strong>Decoration:</strong> ${ decoration.lat} - 
-            ${decoration.lon}
+            <strong>Decoration:</strong> ${ nearestDecoration.lat} - 
+            ${nearestDecoration.lon}
         `;
         distanceInfo.style.display = 'block';
     } else {
