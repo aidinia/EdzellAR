@@ -1,6 +1,7 @@
 // Christmas Decorations Configuration
 // Replace these coordinates with actual locations in your neighborhood
 
+
 const christmasDecorations = [
     {
         id: 'tree-1',
@@ -10,6 +11,42 @@ const christmasDecorations = [
         scale: '10 10 10',
         name: 'Giant Christmas Tree',
         color: '#0f0'
+    },
+    {
+        id: 'santa-1',
+        lat: 56.8492042, // REPLACE - Example: offset from first location
+        lon: -2.6443776, // REPLACE
+        type: 'santa',
+        scale: '5 5 5',
+        name: 'Santa Claus',
+        color: '#f00'
+    },
+    {
+        id: 'snowman-1',
+        lat: 56.8492022,  // REPLACE
+        lon: -2.6443776, // REPLACE
+        type: 'snowman',
+        scale: '4 4 4',
+        name: 'Snowman',
+        color: '#fff'
+    },
+    {
+        id: 'present-1',
+        lat: 56.8492032, // REPLACE
+        lon:  -2.6443766, // REPLACE
+        type: 'present',
+        scale: '3 3 3',
+        name: 'Gift Box',
+        color: '#ff0'
+    },
+    {
+        id: 'star-1',
+        lat: 56.8492032,  // REPLACE
+        lon: -2.6443786, // REPLACE
+        type: 'star',
+        scale: '2 2 2',
+        name: 'Christmas Star',
+        color: '#ffd700'
     }
 ];
 
