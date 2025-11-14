@@ -13,8 +13,8 @@ const christmasDecorations = [
     },
     {
         id: 'santa-1',
-        lat: 56.815530, // REPLACE - Example: offset from first location
-        lon: -2.619078, // REPLACE
+        lat: 56.815648, 
+        lon: -2.618994, // REPLACE
         type: 'santa',
         scale: '5 5 5',
         name: 'Santa Claus',
@@ -22,8 +22,8 @@ const christmasDecorations = [
     },
     {
         id: 'snowman-1',
-        lat: -56.816052,  // REPLACE
-        lon: -2.620111, // REPLACE
+        lat: 56.815665, 
+        lon: -2.619029, // REPLACE
         type: 'snowman',
         scale: '4 4 4',
         name: 'Snowman',
@@ -31,8 +31,8 @@ const christmasDecorations = [
     },
     {
         id: 'present-1',
-        lat: 56.815711, // REPLACE
-        lon:  -2.618864, // REPLACE
+        lat: 56.815697,
+        lon:   -2.618960, // REPLACE
         type: 'present',
         scale: '3 3 3',
         name: 'Gift Box',
@@ -40,8 +40,8 @@ const christmasDecorations = [
     },
     {
         id: 'star-1',
-        lat: 56.815325,  // REPLACE
-        lon: -2.618770, // REPLACE
+        lat: 56.815686, 
+        lon: -2.618891, // REPLACE
         type: 'star',
         scale: '2 2 2',
         name: 'Christmas Star',
