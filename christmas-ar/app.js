@@ -49,9 +49,11 @@ async function requestLocationPermission() {
                 userLocation.lat = position.coords.latitude;
                 userLocation.lon = position.coords.longitude;
                 console.log('User location:', userLocation);
+                console.log('GPS Accuracy:', position.coords.accuracy, 'meters');
                 resolve();
             },
             (error) => {
+                console.error('Geolocation error:', error);
                 reject(error);
             },
             {
@@ -77,8 +79,17 @@ function initializeAR() {
 
 function onSceneLoaded() {
     console.log('AR Scene loaded');
+    updateStatus('AR Scene loaded. Preparing decorations...');
     loadDecorations();
     startLocationTracking();
+}
+
+function updateStatus(message) {
+    const statusInfo = document.getElementById('status-info');
+    if (statusInfo) {
+        statusInfo.textContent = message;
+        console.log('STATUS:', message);
+    }
 }
 
 function loadDecorations() {
@@ -91,9 +102,12 @@ function loadDecorations() {
     // In test mode, wait for valid GPS coordinates
     if (TEST_MODE && (userLocation.lat === 0 || userLocation.lon === 0)) {
         console.warn('Waiting for GPS lock in TEST_MODE...');
+        updateStatus(`Waiting for GPS lock... (${userLocation.lat.toFixed(6)}, ${userLocation.lon.toFixed(6)})`);
         setTimeout(loadDecorations, 1000);
         return;
     }
+
+    updateStatus(`Loading decorations at your location (${userLocation.lat.toFixed(4)}, ${userLocation.lon.toFixed(4)})...`);
 
     christmasDecorations.forEach((decoration, index) => {
         // Skip decorations with default 0,0 coordinates
@@ -149,10 +163,19 @@ function loadDecorations() {
 
         scene.appendChild(entity);
         console.log(`Added decoration: ${decoration.name} at ${lat}, ${lon}`);
+        updateStatus(`Loaded ${index + 1}/${christmasDecorations.length}: ${decoration.name}`);
     });
 
     decorationsLoaded = true;
     updateDecorationCount();
+
+    // Final status message
+    setTimeout(() => {
+        updateStatus(`✅ All decorations loaded! Look around to see them.`);
+        setTimeout(() => {
+            updateStatus(''); // Clear status after 3 seconds
+        }, 3000);
+    }, 500);
 }
 
 function startLocationTracking() {
