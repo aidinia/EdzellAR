@@ -1,7 +1,6 @@
 // Christmas Decorations Configuration
 // Replace these coordinates with actual locations in your neighborhood
 
-
 const christmasDecorations = [
     {
         id: 'tree-1',

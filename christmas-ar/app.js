@@ -4,6 +4,10 @@ let camera;
 let userLocation = { lat: 0, lon: 0 };
 let decorationsLoaded = false;
 
+// TEST MODE: Set to true to place decorations relative to your current location
+// Set to false to use the exact GPS coordinates in decorations.js
+const TEST_MODE = true;
+
 // Initialize the AR experience
 document.getElementById('start-btn').addEventListener('click', startARExperience);
 
@@ -81,6 +85,8 @@ function loadDecorations() {
     if (decorationsLoaded) return;
 
     console.log('Loading decorations...');
+    console.log('TEST_MODE:', TEST_MODE);
+    console.log('User location:', userLocation);
 
     christmasDecorations.forEach((decoration, index) => {
         // Skip decorations with default 0,0 coordinates
@@ -89,10 +95,28 @@ function loadDecorations() {
             return;
         }
 
+        let lat, lon;
+
+        if (TEST_MODE) {
+            // In test mode, place decorations around the user's current location
+            // Each decoration is offset by ~10-20 meters in different directions
+            const offsetLat = (index - 2) * 0.0001; // ~11 meters per 0.0001 degrees latitude
+            const offsetLon = (index % 2 === 0 ? 1 : -1) * 0.0001;
+
+            lat = userLocation.lat + offsetLat;
+            lon = userLocation.lon + offsetLon;
+
+            console.log(`TEST MODE: Placing ${decoration.name} at offset (${offsetLat}, ${offsetLon})`);
+        } else {
+            // Use exact coordinates from decorations.js
+            lat = decoration.lat;
+            lon = decoration.lon;
+        }
+
         // Create container for the decoration
         const entity = document.createElement('a-entity');
         entity.setAttribute('id', decoration.id);
-        entity.setAttribute('gps-entity-place', `latitude: ${decoration.lat}; longitude: ${decoration.lon}`);
+        entity.setAttribute('gps-entity-place', `latitude: ${lat}; longitude: ${lon}`);
         entity.setAttribute('scale', decoration.scale);
 
         // Add the decoration model
@@ -117,7 +141,7 @@ function loadDecorations() {
         });
 
         scene.appendChild(entity);
-        console.log(`Added decoration: ${decoration.name} at ${decoration.lat}, ${decoration.lon}`);
+        console.log(`Added decoration: ${decoration.name} at ${lat}, ${lon}`);
     });
 
     decorationsLoaded = true;
@@ -174,10 +198,10 @@ function updateDistanceInfo() {
             <strong>Nearest:</strong> ${nearestDecoration.name}<br>
             <strong>Distance:</strong> ${Math.round(minDistance)}m away
             <br><br>
-             <strong>Your position:</strong> ${userLocation.lat} - ,
+             <strong>Your position:</strong> ${userLocation.lat} - 
             ${userLocation.lon}<br> 
-            <strong>Decoration:</strong> ${ nearestDecoration.lat} - 
-            ${nearestDecoration.lon}
+            <strong>Decoration:</strong> ${ decoration.lat} - 
+            ${decoration.lon}
         `;
         distanceInfo.style.display = 'block';
     } else {
@@ -188,7 +212,8 @@ function updateDistanceInfo() {
 function updateDecorationCount() {
     const countElement = document.getElementById('decoration-count');
     const validDecorations = christmasDecorations.filter(d => d.lat !== 0 || d.lon !== 0).length;
-    countElement.textContent = `Decorations in neighborhood: ${validDecorations}`;
+    const mode = TEST_MODE ? '🧪 TEST MODE' : '📍 LIVE MODE';
+    countElement.textContent = `${mode} | Decorations: ${validDecorations}`;
 }
 
 function showDecorationInfo(decoration) {
