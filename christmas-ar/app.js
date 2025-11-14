@@ -88,6 +88,13 @@ function loadDecorations() {
     console.log('TEST_MODE:', TEST_MODE);
     console.log('User location:', userLocation);
 
+    // In test mode, wait for valid GPS coordinates
+    if (TEST_MODE && (userLocation.lat === 0 || userLocation.lon === 0)) {
+        console.warn('Waiting for GPS lock in TEST_MODE...');
+        setTimeout(loadDecorations, 1000);
+        return;
+    }
+
     christmasDecorations.forEach((decoration, index) => {
         // Skip decorations with default 0,0 coordinates
         if (decoration.lat === 0 && decoration.lon === 0 && index > 0) {
@@ -214,9 +221,6 @@ function updateDecorationCount() {
     const validDecorations = christmasDecorations.filter(d => d.lat !== 0 || d.lon !== 0).length;
     const mode = TEST_MODE ? '🧪 TEST MODE' : '📍 LIVE MODE';
     countElement.textContent = `${mode} | Decorations: ${validDecorations}`;
-      countElement.onclick = function(){
-        TEST_MODE = !TEST_MODE;
-    }
 }
 
 function showDecorationInfo(decoration) {
