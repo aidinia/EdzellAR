@@ -34,9 +34,6 @@ async function startARExperience() {
 }
 
 async function requestLocationPermission() {
-         var p = document.createElement("p");
-                p.innerText = "Requesting Location";
-                document.getElementById("splash-screen").appendChild(p);
     return new Promise((resolve, reject) => {
         if (!navigator.geolocation) {
             reject(new Error('Geolocation not supported'));
@@ -48,9 +45,6 @@ async function requestLocationPermission() {
                 userLocation.lat = position.coords.latitude;
                 userLocation.lon = position.coords.longitude;
                 console.log('User location:', userLocation);
-                var p = document.createElement("p");
-                p.innerText = position.coords.latitude; + " --- " + position.coords.longitude;
-                document.getElementById("splash-screen").appendChild(p);
                 resolve();
             },
             (error) => {
@@ -179,6 +173,11 @@ function updateDistanceInfo() {
         distanceInfo.innerHTML = `
             <strong>Nearest:</strong> ${nearestDecoration.name}<br>
             <strong>Distance:</strong> ${Math.round(minDistance)}m away
+            <br><br>
+             <strong>Your position:</strong> ${userLocation.lat} - ,
+            ${userLocation.lon}<br> 
+            <strong>Decoration:</strong> ${ decoration.lat} - 
+            ${decoration.lon}
         `;
         distanceInfo.style.display = 'block';
     } else {
