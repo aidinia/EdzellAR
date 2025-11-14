@@ -28,7 +28,9 @@ async function startARExperience() {
             loadingScreen.style.display = 'none';
             arScene.style.display = 'block';
             document.getElementById('status-overlay').style.display = 'block';
-            console.log('AR Scene and status overlay displayed');
+            document.getElementById('debug-overlay').style.display = 'block';
+            document.getElementById('debug-overlay').innerHTML = `AR STARTED<br>Location: ${userLocation.lat.toFixed(4)}, ${userLocation.lon.toFixed(4)}`;
+            console.log('AR Scene and overlays displayed');
             initializeAR();
         }, 2000);
     } catch (error) {
@@ -175,8 +177,22 @@ function loadDecorations() {
         });
 
         scene.appendChild(entity);
+
+        const distance = calculateDistance(userLocation.lat, userLocation.lon, lat, lon);
         console.log(`Added decoration: ${decoration.name} at ${lat}, ${lon}`);
-        updateStatus(`Loaded ${index + 1}/${decorationsToLoad.length}: ${decoration.name}`);
+        console.log(`Distance from user: ${Math.round(distance)}m`);
+
+        // Update debug overlay
+        document.getElementById('debug-overlay').innerHTML = `
+            DECORATION LOADED!<br>
+            ${decoration.name}<br>
+            Your Pos: ${userLocation.lat.toFixed(6)}, ${userLocation.lon.toFixed(6)}<br>
+            Decor Pos: ${lat.toFixed(6)}, ${lon.toFixed(6)}<br>
+            Distance: ${Math.round(distance)}m<br>
+            <small>Look ${distance > 20 ? 'far' : 'around'} to see it!</small>
+        `;
+
+        updateStatus(`Loaded ${index + 1}/${decorationsToLoad.length}: ${decoration.name}\nDistance: ${Math.round(distance)}m`);
     });
 
     decorationsLoaded = true;
