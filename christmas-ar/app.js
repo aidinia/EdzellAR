@@ -214,6 +214,9 @@ function updateDecorationCount() {
     const validDecorations = christmasDecorations.filter(d => d.lat !== 0 || d.lon !== 0).length;
     const mode = TEST_MODE ? '🧪 TEST MODE' : '📍 LIVE MODE';
     countElement.textContent = `${mode} | Decorations: ${validDecorations}`;
+      countElement.onclick = function(){
+        TEST_MODE = !TEST_MODE;
+    }
 }
 
 function showDecorationInfo(decoration) {
