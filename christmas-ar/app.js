@@ -86,6 +86,8 @@ function onSceneLoaded() {
 
 function updateStatus(message) {
     const statusInfo = document.getElementById('status-info');
+        statusInfo.style.display = "block";
+
     if (statusInfo) {
         statusInfo.textContent = message;
         console.log('STATUS:', message);
@@ -174,6 +176,8 @@ function loadDecorations() {
         updateStatus(`✅ All decorations loaded! Look around to see them.`);
         setTimeout(() => {
             updateStatus(''); // Clear status after 3 seconds
+            document.getElementById('status-info').style.display = "none";
+
         }, 3000);
     }, 500);
 }
