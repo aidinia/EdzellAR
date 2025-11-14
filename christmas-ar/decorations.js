@@ -10,42 +10,6 @@ const christmasDecorations = [
         scale: '10 10 10',
         name: 'Giant Christmas Tree',
         color: '#0f0'
-    },
-    {
-        id: 'santa-1',
-        lat: 56.815648, 
-        lon: -2.618994, // REPLACE
-        type: 'santa',
-        scale: '5 5 5',
-        name: 'Santa Claus',
-        color: '#f00'
-    },
-    {
-        id: 'snowman-1',
-        lat: 56.815665, 
-        lon: -2.619029, // REPLACE
-        type: 'snowman',
-        scale: '4 4 4',
-        name: 'Snowman',
-        color: '#fff'
-    },
-    {
-        id: 'present-1',
-        lat: 56.815697,
-        lon:   -2.618960, // REPLACE
-        type: 'present',
-        scale: '3 3 3',
-        name: 'Gift Box',
-        color: '#ff0'
-    },
-    {
-        id: 'star-1',
-        lat: 56.815686, 
-        lon: -2.618891, // REPLACE
-        type: 'star',
-        scale: '2 2 2',
-        name: 'Christmas Star',
-        color: '#ffd700'
     }
 ];
 
