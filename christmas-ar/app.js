@@ -136,8 +136,8 @@ function loadDecorations() {
         if (TEST_MODE) {
             // In test mode, place decorations around the user's current location
             // Each decoration is offset by ~10-20 meters in different directions
-            const offsetLat = (index - 2) * 0.0001; // ~11 meters per 0.0001 degrees latitude
-            const offsetLon = (index % 2 === 0 ? 1 : -1) * 0.0001;
+            const offsetLat = (index - 2) * 0.00001; // ~11 meters per 0.0001 degrees latitude
+            const offsetLon = (index % 2 === 0 ? 1 : -1) * 0.00001;
 
             lat = userLocation.lat + offsetLat;
             lon = userLocation.lon + offsetLon;
