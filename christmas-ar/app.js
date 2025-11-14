@@ -85,11 +85,9 @@ function onSceneLoaded() {
 }
 
 function updateStatus(message) {
-    const statusInfo = document.getElementById('status-info');
-        statusInfo.style.display = "block";
-
-    if (statusInfo) {
-        statusInfo.textContent = message;
+    const infoText = document.getElementById('info-text');
+    if (infoText) {
+        infoText.setAttribute('text', 'value', message);
         console.log('STATUS:', message);
     }
 }
@@ -169,16 +167,12 @@ function loadDecorations() {
     });
 
     decorationsLoaded = true;
-    updateDecorationCount();
 
     // Final status message
     setTimeout(() => {
-        updateStatus(`✅ All decorations loaded! Look around to see them.`);
-        setTimeout(() => {
-            updateStatus(''); // Clear status after 3 seconds
-            document.getElementById('status-info').style.display = "none";
-
-        }, 3000);
+        const mode = TEST_MODE ? '🧪 TEST' : '📍 LIVE';
+        const info = `${mode} | Decorations: ${christmasDecorations.length}\n✅ Look around!`;
+        updateStatus(info);
     }, 500);
 }
 
@@ -205,8 +199,6 @@ function startLocationTracking() {
 }
 
 function updateDistanceInfo() {
-    const distanceInfo = document.getElementById('distance-info');
-
     // Find nearest decoration
     let nearestDecoration = null;
     let minDistance = Infinity;
@@ -227,28 +219,18 @@ function updateDistanceInfo() {
         }
     });
 
+    const mode = TEST_MODE ? '🧪 TEST' : '📍 LIVE';
+    let statusText = `${mode} | Decorations: ${christmasDecorations.length}`;
+
     if (nearestDecoration && minDistance < 1000) {
-        distanceInfo.innerHTML = `
-            <strong>Nearest:</strong> ${nearestDecoration.name}<br>
-            <strong>Distance:</strong> ${Math.round(minDistance)}m away
-            <br><br>
-             <strong>Your position:</strong> ${userLocation.lat} - 
-            ${userLocation.lon}<br> 
-            <strong>Decoration:</strong> ${ decoration.lat} - 
-            ${decoration.lon}
-        `;
-        distanceInfo.style.display = 'block';
-    } else {
-        distanceInfo.style.display = 'none';
+        statusText += `\nNearest: ${nearestDecoration.name}\nDistance: ${Math.round(minDistance)}m`;
+    } else if (nearestDecoration) {
+        statusText += `\nNearest: ${Math.round(minDistance)}m away`;
     }
+
+    updateStatus(statusText);
 }
 
-function updateDecorationCount() {
-    const countElement = document.getElementById('decoration-count');
-    const validDecorations = christmasDecorations.filter(d => d.lat !== 0 || d.lon !== 0).length;
-    const mode = TEST_MODE ? '🧪 TEST MODE' : '📍 LIVE MODE';
-    countElement.textContent = `${mode} | Decorations: ${validDecorations}`;
-}
 
 function showDecorationInfo(decoration) {
     const distance = calculateDistance(
