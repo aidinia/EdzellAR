@@ -45,19 +45,25 @@
         <a-camera gps-camera rotation-reader look-controls-enabled="false">
             <!-- Info panel anchored to camera (bottom right corner) -->
             <a-entity id="info-text"
-                      position="0.35 -0.25 -0.5"
+                      position="0.25 -0.2 -0.5"
                       text="value: Starting...;
-                            color: #ffd700;
+                            color: #ffff00;
                             align: right;
-                            width: 0.8;
-                            wrapCount: 30;
-                            baseline: bottom;"
+                            width: 1;
+                            wrapCount: 35;
+                            font: roboto;
+                            shader: msdf;"
                       visible="true">
             </a-entity>
         </a-camera>
 
         <!-- Decorations will be added dynamically by JavaScript -->
     </a-scene>
+
+    <!-- HTML overlay for status (backup) -->
+    <div id="status-overlay" style="display: none; position: fixed; bottom: 20px; right: 20px; background: rgba(0,0,0,0.8); color: #ffd700; padding: 15px; border-radius: 10px; font-family: monospace; font-size: 14px; z-index: 10000; max-width: 300px; text-align: right; line-height: 1.5;">
+        Starting...
+    </div>
 
     <script src="decorations.js"></script>
     <script src="app.js"></script>

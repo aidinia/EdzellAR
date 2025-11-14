@@ -27,6 +27,8 @@ async function startARExperience() {
         setTimeout(() => {
             loadingScreen.style.display = 'none';
             arScene.style.display = 'block';
+            document.getElementById('status-overlay').style.display = 'block';
+            console.log('AR Scene and status overlay displayed');
             initializeAR();
         }, 2000);
     } catch (error) {
@@ -85,11 +87,19 @@ function onSceneLoaded() {
 }
 
 function updateStatus(message) {
+    // Update A-Frame text entity
     const infoText = document.getElementById('info-text');
     if (infoText) {
         infoText.setAttribute('text', 'value', message);
-        console.log('STATUS:', message);
     }
+
+    // Update HTML overlay (backup)
+    const statusOverlay = document.getElementById('status-overlay');
+    if (statusOverlay) {
+        statusOverlay.innerHTML = message.replace(/\n/g, '<br>');
+    }
+
+    console.log('STATUS:', message);
 }
 
 function loadDecorations() {
@@ -109,7 +119,10 @@ function loadDecorations() {
 
     updateStatus(`Loading decorations at your location (${userLocation.lat.toFixed(4)}, ${userLocation.lon.toFixed(4)})...`);
 
-    christmasDecorations.forEach((decoration, index) => {
+    // In test mode, only load the first decoration for easier testing
+    const decorationsToLoad = TEST_MODE ? christmasDecorations.slice(0, 1) : christmasDecorations;
+
+    decorationsToLoad.forEach((decoration, index) => {
         // Skip decorations with default 0,0 coordinates
         if (decoration.lat === 0 && decoration.lon === 0 && index > 0) {
             console.warn(`Skipping ${decoration.name} - please set GPS coordinates`);
@@ -163,7 +176,7 @@ function loadDecorations() {
 
         scene.appendChild(entity);
         console.log(`Added decoration: ${decoration.name} at ${lat}, ${lon}`);
-        updateStatus(`Loaded ${index + 1}/${christmasDecorations.length}: ${decoration.name}`);
+        updateStatus(`Loaded ${index + 1}/${decorationsToLoad.length}: ${decoration.name}`);
     });
 
     decorationsLoaded = true;
@@ -171,7 +184,7 @@ function loadDecorations() {
     // Final status message
     setTimeout(() => {
         const mode = TEST_MODE ? '🧪 TEST' : '📍 LIVE';
-        const info = `${mode} | Decorations: ${christmasDecorations.length}\n✅ Look around!`;
+        const info = `${mode} | Decorations: ${decorationsToLoad.length}\n✅ Look around!`;
         updateStatus(info);
     }, 500);
 }
