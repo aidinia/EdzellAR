@@ -6,10 +6,13 @@ let decorationsLoaded = false;
 
 // TEST MODE: Set to true to place decorations relative to your current location
 // Set to false to use the exact GPS coordinates in decorations.js
-const TEST_MODE = true;
+let TEST_MODE = true;
 
 // Initialize the AR experience
 document.getElementById('start-btn').addEventListener('click', startARExperience);
+document.getElementById('testCheckbox').onclick = function(){
+    TEST_MODE = this.checked;
+};
 
 async function startARExperience() {
     const splashScreen = document.getElementById('splash-screen');
