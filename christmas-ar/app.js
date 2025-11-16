@@ -30,10 +30,15 @@ async function startARExperience() {
         setTimeout(() => {
             loadingScreen.style.display = 'none';
             arScene.style.display = 'block';
-            document.getElementById('status-overlay').style.display = 'block';
-            document.getElementById('debug-overlay').style.display = 'block';
-            document.getElementById('debug-overlay').innerHTML = `AR STARTED<br>Location: ${userLocation.lat.toFixed(4)}, ${userLocation.lon.toFixed(4)}`;
-            console.log('AR Scene and overlays displayed');
+
+            // Only show debug overlays in test mode
+            if (TEST_MODE) {
+                document.getElementById('status-overlay').style.display = 'block';
+                document.getElementById('debug-overlay').style.display = 'block';
+                document.getElementById('debug-overlay').innerHTML = `AR STARTED<br>Location: ${userLocation.lat.toFixed(4)}, ${userLocation.lon.toFixed(4)}`;
+            }
+
+            console.log('AR Scene displayed');
             initializeAR();
         }, 2000);
     } catch (error) {
@@ -86,32 +91,38 @@ function initializeAR() {
 
 function onSceneLoaded() {
     console.log('AR Scene loaded');
-    updateStatus('TAP SCREEN to place decoration at your location!');
 
-    // Update debug overlay
-    document.getElementById('debug-overlay').innerHTML = `
-        TAP ANYWHERE<br>
-        to place decoration!<br>
-        <small>Your location: ${userLocation.lat.toFixed(6)}, ${userLocation.lon.toFixed(6)}</small>
-    `;
+    if (TEST_MODE) {
+        updateStatus('TAP SCREEN to place decoration at your location!');
 
-    // Add tap listener to place decorations
-    document.addEventListener('click', placeDecorationAtCurrentLocation);
+        // Update debug overlay
+        document.getElementById('debug-overlay').innerHTML = `
+            TAP ANYWHERE<br>
+            to place decoration!<br>
+            <small>Your location: ${userLocation.lat.toFixed(6)}, ${userLocation.lon.toFixed(6)}</small>
+        `;
+
+        // Add tap listener to place decorations
+        document.addEventListener('click', placeDecorationAtCurrentLocation);
+    }
 
     startLocationTracking();
 }
 
 function updateStatus(message) {
-    // Update A-Frame text entity
-    const infoText = document.getElementById('info-text');
-    if (infoText) {
-        infoText.setAttribute('text', 'value', message);
-    }
+    // Only update UI in test mode
+    if (TEST_MODE) {
+        // Update A-Frame text entity
+        const infoText = document.getElementById('info-text');
+        if (infoText) {
+            infoText.setAttribute('text', 'value', message);
+        }
 
-    // Update HTML overlay (backup)
-    const statusOverlay = document.getElementById('status-overlay');
-    if (statusOverlay) {
-        statusOverlay.innerHTML = message.replace(/\n/g, '<br>');
+        // Update HTML overlay (backup)
+        const statusOverlay = document.getElementById('status-overlay');
+        if (statusOverlay) {
+            statusOverlay.innerHTML = message.replace(/\n/g, '<br>');
+        }
     }
 
     console.log('STATUS:', message);
@@ -181,17 +192,19 @@ function placeDecoration(decoration, index) {
     console.log(`Added decoration: ${decoration.name} at ${lat}, ${lon}`);
     console.log(`Distance from user: ${Math.round(distance)}m`);
 
-    // Update debug overlay
-    document.getElementById('debug-overlay').innerHTML = `
-        DECORATION PLACED!<br>
-        ${decoration.name} #${placedDecorationCount}<br>
-        Your Pos: ${userLocation.lat.toFixed(6)}, ${userLocation.lon.toFixed(6)}<br>
-        Decor Pos: ${lat.toFixed(6)}, ${lon.toFixed(6)}<br>
-        Distance: ${Math.round(distance)}m<br>
-        <small>TAP AGAIN to place another!</small>
-    `;
+    // Update debug overlay only in test mode
+    if (TEST_MODE) {
+        document.getElementById('debug-overlay').innerHTML = `
+            DECORATION PLACED!<br>
+            ${decoration.name} #${placedDecorationCount}<br>
+            Your Pos: ${userLocation.lat.toFixed(6)}, ${userLocation.lon.toFixed(6)}<br>
+            Decor Pos: ${lat.toFixed(6)}, ${lon.toFixed(6)}<br>
+            Distance: ${Math.round(distance)}m<br>
+            <small>TAP AGAIN to place another!</small>
+        `;
 
-    updateStatus(`Placed: ${decoration.name}\nDistance: ${Math.round(distance)}m\nTap to place more!`);
+        updateStatus(`Placed: ${decoration.name}\nDistance: ${Math.round(distance)}m\nTap to place more!`);
+    }
 }
 
 function startLocationTracking() {
