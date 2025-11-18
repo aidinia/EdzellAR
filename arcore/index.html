@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hello WebXR AR</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        #container {
+            text-align: center;
+            padding: 20px;
+        }
+
+        h1 {
+            color: white;
+            margin-bottom: 20px;
+        }
+
+        button {
+            background-color: #4CAF50;
+            border: none;
+            color: white;
+            padding: 15px 32px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 4px 2px;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <h1>Hello WebXR AR</h1>
+        <button id="xr-button" onclick="activateXR()">Start AR</button>
+    </div>
+
+    <!-- Import Three.js library -->
+    <script src="https://unpkg.com/three@0.126.0/build/three.js"></script>
+    <!-- Import GLTFLoader for 3D models -->
+    <script src="https://unpkg.com/three@0.126.0/examples/js/loaders/GLTFLoader.js"></script>
+
+    <script>
+        // Global variables
+        let scene, camera, renderer;
+        let xrSession = null;
+        let xrRefSpace = null;
+        let xrHitTestSource = null;
+        let reticle;
+        let flowers = [];
+
+        // Initialize Three.js scene
+        function initScene() {
+            // Create scene
+            scene = new THREE.Scene();
+
+            // Create a colorful cube
+            const materials = [
+                new THREE.MeshBasicMaterial({color: 0xff0000}), // Red
+                new THREE.MeshBasicMaterial({color: 0x00ff00}), // Green
+                new THREE.MeshBasicMaterial({color: 0x0000ff}), // Blue
+                new THREE.MeshBasicMaterial({color: 0xffff00}), // Yellow
+                new THREE.MeshBasicMaterial({color: 0xff00ff}), // Magenta
+                new THREE.MeshBasicMaterial({color: 0x00ffff})  // Cyan
+            ];
+
+            const geometry = new THREE.BoxGeometry(0.2, 0.2, 0.2);
+            const cube = new THREE.Mesh(geometry, materials);
+            cube.position.set(0, 0.1, -1);
+            scene.add(cube);
+
+            // Add ambient light
+            const light = new THREE.AmbientLight(0xffffff, 1);
+            scene.add(light);
+
+            // Add directional light
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
+            directionalLight.position.set(0, 1, 1);
+            scene.add(directionalLight);
+        }
+
+        // Initialize renderer and camera
+        function initRenderer() {
+            // Create WebGL renderer
+            renderer = new THREE.WebGLRenderer({
+                alpha: true,
+                preserveDrawingBuffer: true,
+                canvas: document.createElement('canvas')
+            });
+            renderer.autoClear = false;
+            renderer.xr.enabled = true;
+
+            // Create camera
+            camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 20);
+            camera.matrixAutoUpdate = false;
+        }
+
+        // Load reticle model for hit testing
+        function loadReticle() {
+            const loader = new THREE.GLTFLoader();
+            loader.load(
+                'https://immersive-web.github.io/webxr-samples/media/gltf/reticle/reticle.gltf',
+                function(gltf) {
+                    reticle = gltf.scene;
+                    reticle.visible = false;
+                    scene.add(reticle);
+                },
+                undefined,
+                function(error) {
+                    console.error('Error loading reticle:', error);
+                }
+            );
+        }
+
+        // Activate XR session
+        async function activateXR() {
+            const button = document.getElementById('xr-button');
+            button.disabled = true;
+
+            // Check if WebXR is supported
+            if (!navigator.xr) {
+                alert('WebXR is not supported in this browser');
+                button.disabled = false;
+                return;
+            }
+
+            // Initialize Three.js components
+            initScene();
+            initRenderer();
+            loadReticle();
+
+            try {
+                // Request XR session with hit-test feature
+                xrSession = await navigator.xr.requestSession('immersive-ar', {
+                    requiredFeatures: ['hit-test'],
+                    optionalFeatures: ['dom-overlay'],
+                    domOverlay: {root: document.body}
+                });
+
+                // Set up XR session
+                await onSessionStarted();
+
+            } catch (error) {
+                console.error('Error starting AR session:', error);
+                alert('Failed to start AR session. Make sure you are on a device that supports WebXR AR.');
+                button.disabled = false;
+            }
+        }
+
+        // Session started handler
+        async function onSessionStarted() {
+            // Hide the button container
+            document.getElementById('container').style.display = 'none';
+
+            // Add session end listener
+            xrSession.addEventListener('end', onSessionEnded);
+
+            // Add select listener for placing objects
+            xrSession.addEventListener('select', onSelect);
+
+            // Make the canvas fullscreen
+            document.body.appendChild(renderer.domElement);
+
+            // Set up XR rendering
+            await renderer.xr.setSession(xrSession);
+
+            // Get reference space
+            xrRefSpace = await xrSession.requestReferenceSpace('local');
+
+            // Set up hit test source
+            const viewerSpace = await xrSession.requestReferenceSpace('viewer');
+            xrHitTestSource = await xrSession.requestHitTestSource({space: viewerSpace});
+
+            // Start render loop
+            xrSession.requestAnimationFrame(onXRFrame);
+        }
+
+        // Session ended handler
+        function onSessionEnded() {
+            xrSession = null;
+            document.getElementById('container').style.display = 'block';
+            document.getElementById('xr-button').disabled = false;
+
+            if (renderer.domElement.parentNode) {
+                renderer.domElement.parentNode.removeChild(renderer.domElement);
+            }
+        }
+
+        // Handle select events (taps)
+        function onSelect() {
+            if (reticle && reticle.visible) {
+                // Load and place sunflower model
+                const loader = new THREE.GLTFLoader();
+                loader.load(
+                    'https://immersive-web.github.io/webxr-samples/media/gltf/sunflower/sunflower.gltf',
+                    function(gltf) {
+                        const flower = gltf.scene;
+                        flower.position.copy(reticle.position);
+                        flower.scale.set(0.5, 0.5, 0.5);
+                        scene.add(flower);
+                        flowers.push(flower);
+                    }
+                );
+            }
+        }
+
+        // XR render loop
+        function onXRFrame(time, frame) {
+            const session = frame.session;
+            session.requestAnimationFrame(onXRFrame);
+
+            // Get hit test results
+            if (xrHitTestSource) {
+                const hitTestResults = frame.getHitTestResults(xrHitTestSource);
+
+                if (hitTestResults.length > 0) {
+                    const hit = hitTestResults[0];
+                    const pose = hit.getPose(xrRefSpace);
+
+                    if (reticle) {
+                        reticle.visible = true;
+                        reticle.position.setFromMatrixPosition(new THREE.Matrix4().fromArray(pose.transform.matrix));
+                    }
+                } else {
+                    if (reticle) {
+                        reticle.visible = false;
+                    }
+                }
+            }
+
+            // Get viewer pose
+            const pose = frame.getViewerPose(xrRefSpace);
+
+            if (pose) {
+                const view = pose.views[0];
+                const viewport = session.renderState.baseLayer.getViewport(view);
+
+                renderer.setSize(viewport.width, viewport.height);
+
+                // Update camera matrices
+                camera.matrix.fromArray(view.transform.matrix);
+                camera.projectionMatrix.fromArray(view.projectionMatrix);
+                camera.updateMatrixWorld(true);
+
+                // Render scene
+                renderer.render(scene, camera);
+            }
+        }
+    </script>
+</body>
+</html>
