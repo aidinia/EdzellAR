@@ -1,66 +1,53 @@
-// AR Christmas Decorations — "Best of Worlds"
+// AR Christmas Decorations — "Best of Worlds" (v2: anchoring fix)
 //
-// Primary mode: camera feed + GPS + compass (works on Android AND iOS,
-// unlike raw WebXR AR which iOS Safari still doesn't support as of 2026).
-// Optional mode: real WebXR hit-testing for precise tap-to-place, offered
-// only on devices/browsers that actually support it (mainly Android/ARCore).
+// The core problem with a pure GPS+compass approach: a phone's magnetometer
+// is noisy and often biased 10-40° (buildings, rebar, metal). Continuously
+// re-deriving an object's screen position from live compass readings makes
+// it visibly swim/chase the viewer instead of staying anchored — that's
+// what "a pixel that moved with me" was.
 //
-// Bugs fixed relative to the original root/mixed versions this was built
-// from:
-//  - The compass listener used to freeze after its first reading; it now
-//    updates continuously.
-//  - The camera never actually rotated — decorations were swung around a
-//    static camera via ad-hoc trigonometry, while the live video background
-//    stayed fixed, so the overlay and the real world could drift apart. The
-//    camera now has a real orientation (device-orientation quaternion, the
-//    same technique three.js's own DeviceOrientationControls uses), and the
-//    video plane is a child of the camera so it always fills the frame.
-//  - Decoration coordinates were hardcoded to one absolute location. They're
-//    now generated relative to wherever the session starts (see
-//    decorations.js), so the demo works whichever real spot you test it in.
-//  - iOS 13+ requires an explicit user-gesture permission prompt for motion
-//    /orientation sensors; the original code never requested it, so compass
-//    data silently never arrived on iOS. That request is now made on the
-//    Start button tap.
-//  - Removed a leftover unused OpenCV.js include that referenced an
-//    undefined onload handler.
+// The fix used here: don't rely on the compass for anchoring, only for a
+// one-time calibration.
+//
+//  - Where WebXR ('immersive-ar') is available (Android/Chrome on this
+//    project's test device, most ARCore phones generally): anchoring uses
+//    real 6DOF visual-inertial SLAM tracking, the same tech ARCore/ARKit
+//    apps use to feel "locked in place." It never touches the compass
+//    during tracking, so it doesn't drift or jitter. The compass is read
+//    ONCE, briefly, right before the session starts, purely to work out
+//    which way is north relative to the session's own tracking origin —
+//    everything after that is held in place by SLAM, not the magnetometer.
+//  - Where WebXR isn't available (iOS Safari, still no handheld AR support
+//    as of 2026): falls back to camera + GPS + compass, same as before, but
+//    now with the orientation smoothed (slerped) frame to frame instead of
+//    snapping straight to noisy raw sensor values, which measurably reduces
+//    (but can't fully eliminate) the jitter inherent to magnetometer-based
+//    tracking. This mode is honestly labeled as less stable in the debug
+//    overlay — that's a real limitation of phone-grade compass hardware,
+//    not something fixable in JS.
+//
+// Other fixes carried over from the previous pass:
+//  - Decoration coordinates are relative offsets (distance + bearing) from
+//    wherever the session starts, not hardcoded to one absolute location.
+//  - iOS 13+ orientation permission is explicitly requested on the Start tap.
+//  - No dead OpenCV include, no external glTF fetch dependency.
 
 const DEG2RAD = Math.PI / 180;
 const EARTH_RADIUS_M = 6371e3;
 
-let camera, scene, renderer, videoMesh, video, stream;
-let debugEl;
-let decorationMeshes = [];
-let currentPosition = null; // { lat, lon, accuracy }
-let sessionOrigin = null;   // first GPS fix, used to resolve relative decoration offsets
-let lastError = '';
-let orientationSource = 'none'; // 'absolute' | 'relative' | 'none'
-
 const startButton = document.getElementById('startAR');
-const precisionButton = document.getElementById('startPrecisionAR');
-const unsupportedMsg = document.getElementById('unsupportedMsg');
+const statusEl = document.getElementById('startStatus');
 const startScreen = document.getElementById('startScreen');
 const arContainer = document.getElementById('arContainer');
 const canvas = document.getElementById('arCanvas');
+let debugEl;
 
-startButton.addEventListener('click', startAR);
-precisionButton.addEventListener('click', startPrecisionAR);
+let currentPosition = null; // { lat, lon, accuracy }
+let sessionOrigin = null;
+let lastError = '';
+let currentMode = 'starting';
 
-// Offer the WebXR precision button only where it's actually usable.
-(async function checkPrecisionSupport() {
-  if (navigator.xr && navigator.xr.isSessionSupported) {
-    try {
-      const supported = await navigator.xr.isSessionSupported('immersive-ar');
-      if (supported) {
-        precisionButton.hidden = false;
-        return;
-      }
-    } catch (e) {
-      // fall through to unsupported message
-    }
-  }
-  unsupportedMsg.hidden = false;
-})();
+startButton.addEventListener('click', start);
 
 // ---------------------------------------------------------------------
 // Geo math
@@ -91,9 +78,6 @@ function calculateBearing(lat1, lon1, lat2, lon2) {
   return (theta / DEG2RAD + 360) % 360;
 }
 
-// Given a start point, a bearing (degrees from true north) and a distance
-// (meters), return the destination lat/lon. This is what lets decorations
-// be authored as "3m, bearing 60°" instead of a hardcoded lat/lon.
 function destinationPoint(lat, lon, distanceM, bearingDeg) {
   const phi1 = lat * DEG2RAD;
   const lambda1 = lon * DEG2RAD;
@@ -111,22 +95,30 @@ function destinationPoint(lat, lon, distanceM, bearingDeg) {
   return { lat: phi2 / DEG2RAD, lon: lambda2 / DEG2RAD };
 }
 
+// Circular mean, because you can't naively average compass degrees
+// (359° and 1° should average to 0°, not 180°).
+function circularMeanDegrees(samples) {
+  let sinSum = 0, cosSum = 0;
+  samples.forEach(deg => {
+    sinSum += Math.sin(deg * DEG2RAD);
+    cosSum += Math.cos(deg * DEG2RAD);
+  });
+  return (Math.atan2(sinSum, cosSum) / DEG2RAD + 360) % 360;
+}
+
 // ---------------------------------------------------------------------
-// Debug overlay — so failures are visible on-device without needing
-// remote debugging tools.
+// Debug overlay
 // ---------------------------------------------------------------------
 
-function updateDebugOverlay(mode) {
+function updateDebugOverlay() {
   if (!debugEl) return;
   const lines = [];
-  lines.push(`mode: ${mode}`);
+  lines.push(`mode: ${currentMode}`);
   if (currentPosition) {
     lines.push(`gps: ${currentPosition.lat.toFixed(6)}, ${currentPosition.lon.toFixed(6)} (±${Math.round(currentPosition.accuracy)}m)`);
   } else {
     lines.push('gps: waiting for fix...');
   }
-  lines.push(`orientation: ${orientationSource}`);
-  lines.push(`decorations placed: ${decorationMeshes.length}`);
   if (lastError) lines.push(`<span class="err">error: ${lastError}</span>`);
   debugEl.innerHTML = lines.join('\n');
 }
@@ -134,51 +126,17 @@ function updateDebugOverlay(mode) {
 function setError(context, err) {
   lastError = `${context}: ${err && err.message ? err.message : err}`;
   console.error(context, err);
-  updateDebugOverlay(currentMode);
+  updateDebugOverlay();
 }
 
-let currentMode = 'gps';
-
-// ---------------------------------------------------------------------
-// Mode 1: camera feed + GPS + compass (primary, broad device support)
-// ---------------------------------------------------------------------
-
-async function startAR() {
-  currentMode = 'gps';
-  startButton.disabled = true;
-
-  try {
-    // iOS 13+ requires an explicit permission prompt for motion/orientation
-    // sensors, triggered from a user gesture. Ask for it before anything
-    // else so we don't silently lose compass data on iOS.
-    await requestOrientationPermission();
-
-    stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'environment' }
-    });
-
-    startScreen.hidden = true;
-    arContainer.hidden = false;
-    debugEl = document.getElementById('debugOverlay');
-
-    video = document.createElement('video');
-    video.srcObject = stream;
-    video.setAttribute('playsinline', true);
-    video.play();
-
-    video.addEventListener('loadedmetadata', () => {
-      initThreeJS();
-      addOrientationListeners();
-      startGeolocation();
-      animate();
-      updateDebugOverlay(currentMode);
-    });
-  } catch (error) {
-    setError('startAR', error);
-    alert('Could not start AR: ' + (error.message || error));
-    startButton.disabled = false;
-  }
+function setStatus(text) {
+  if (statusEl) statusEl.textContent = text;
 }
+
+// ---------------------------------------------------------------------
+// Shared setup: GPS fix + one-time compass calibration + iOS permission.
+// Both the XR path and the fallback path need this.
+// ---------------------------------------------------------------------
 
 async function requestOrientationPermission() {
   if (typeof DeviceOrientationEvent !== 'undefined' &&
@@ -188,66 +146,111 @@ async function requestOrientationPermission() {
       throw new Error('Motion/orientation permission denied');
     }
   }
-  // Non-iOS browsers: no explicit permission step needed.
 }
 
-function initThreeJS() {
-  scene = new THREE.Scene();
-
-  const aspect = window.innerWidth / window.innerHeight;
-  camera = new THREE.PerspectiveCamera(75, aspect, 0.1, 1000);
-  camera.rotation.reorder('YXZ');
-  camera.position.set(0, 0, 0);
-
-  renderer = new THREE.WebGLRenderer({ canvas, alpha: true });
-  renderer.setSize(window.innerWidth, window.innerHeight);
-
-  // Video background is a CHILD of the camera at a fixed local offset, so
-  // it always fills the frame regardless of how the camera rotates. (In
-  // the original version the background never rotated with the phone at
-  // all, which is why the overlay and the live feed could feel out of
-  // sync with each other.)
-  const videoTexture = new THREE.VideoTexture(video);
-  videoTexture.minFilter = THREE.LinearFilter;
-  videoTexture.magFilter = THREE.LinearFilter;
-
-  const videoMaterial = new THREE.MeshBasicMaterial({ map: videoTexture, depthTest: false, depthWrite: false });
-  const videoGeometry = new THREE.PlaneGeometry(4, 4);
-  videoMesh = new THREE.Mesh(videoGeometry, videoMaterial);
-  videoMesh.position.set(0, 0, -2);
-  videoMesh.renderOrder = -1;
-  camera.add(videoMesh);
-  scene.add(camera);
-
-  const ambientLight = new THREE.AmbientLight(0xffffff, 0.9);
-  scene.add(ambientLight);
-  const directionalLight = new THREE.DirectionalLight(0xffffff, 0.7);
-  directionalLight.position.set(1, 1, 1);
-  scene.add(directionalLight);
-
-  createDecorations();
-
-  window.addEventListener('resize', onWindowResize);
-}
-
-function createDecorations() {
-  decorationMeshes.forEach(mesh => scene.remove(mesh));
-  decorationMeshes = [];
-
-  christmasDecorations.forEach(decoration => {
-    const mesh = createDecorationMesh(decoration.type, decoration.color, decoration.scale);
-    mesh.userData = decoration;
-    mesh.visible = false; // shown once we can compute a real position
-    decorationMeshes.push(mesh);
-    scene.add(mesh);
+function getCurrentPositionAsync(options) {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) {
+      reject(new Error('Geolocation not supported'));
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(resolve, reject, options);
   });
 }
 
+// Samples compass heading for a short window and returns the circular
+// mean. This is the ONLY place the compass is used for the XR-anchored
+// path — after this, SLAM tracking takes over and the compass is ignored.
+function calibrateCompass(durationMs) {
+  return new Promise((resolve) => {
+    const samples = [];
+    let usingAbsolute = false;
+
+    const onAbsolute = (event) => {
+      if (event.alpha === null) return;
+      usingAbsolute = true;
+      samples.push(event.alpha);
+    };
+    const onRelative = (event) => {
+      if (event.alpha === null || usingAbsolute) return;
+      samples.push(event.alpha);
+    };
+
+    window.addEventListener('deviceorientationabsolute', onAbsolute);
+    window.addEventListener('deviceorientation', onRelative);
+
+    setTimeout(() => {
+      window.removeEventListener('deviceorientationabsolute', onAbsolute);
+      window.removeEventListener('deviceorientation', onRelative);
+      resolve({
+        headingDeg: samples.length ? circularMeanDegrees(samples) : 0,
+        sampleCount: samples.length,
+        wasAbsolute: usingAbsolute
+      });
+    }, durationMs);
+  });
+}
+
+async function start() {
+  startButton.disabled = true;
+  lastError = '';
+
+  try {
+    await requestOrientationPermission();
+
+    setStatus('Getting your location…');
+    const position = await getCurrentPositionAsync({ enableHighAccuracy: true, timeout: 15000 });
+    currentPosition = {
+      lat: position.coords.latitude,
+      lon: position.coords.longitude,
+      accuracy: position.coords.accuracy
+    };
+    sessionOrigin = { lat: currentPosition.lat, lon: currentPosition.lon };
+
+    setStatus('Calibrating compass — hold your phone still, facing forward…');
+    const calibration = await calibrateCompass(1800);
+
+    const xrSupported = await isImmersiveArSupported();
+
+    if (xrSupported) {
+      try {
+        await startXRAnchored(calibration.headingDeg);
+        return;
+      } catch (xrError) {
+        console.warn('WebXR session failed, falling back to compass mode:', xrError);
+        // fall through to the fallback path below
+      }
+    }
+
+    await startCompassFallback();
+  } catch (error) {
+    setError('start', error);
+    alert('Could not start AR: ' + (error.message || error));
+    startButton.disabled = false;
+    setStatus('');
+  }
+}
+
+async function isImmersiveArSupported() {
+  if (!navigator.xr || !navigator.xr.isSessionSupported) return false;
+  try {
+    return await navigator.xr.isSessionSupported('immersive-ar');
+  } catch (e) {
+    return false;
+  }
+}
+
+function enterArUI() {
+  startScreen.hidden = true;
+  arContainer.hidden = false;
+  debugEl = document.getElementById('debugOverlay');
+  updateDebugOverlay();
+}
+
 // Resolve each decoration's absolute lat/lon from its {distance, bearing}
-// offset, anchored to wherever the session started.
+// offset, anchored to the session's starting GPS position.
 function resolveDecorationCoordinates() {
-  decorationMeshes.forEach(mesh => {
-    const d = mesh.userData;
+  christmasDecorations.forEach(d => {
     if (d._resolved) return;
     const dest = destinationPoint(sessionOrigin.lat, sessionOrigin.lon, d.distance, d.bearing);
     d.lat = dest.lat;
@@ -256,218 +259,71 @@ function resolveDecorationCoordinates() {
   });
 }
 
-function startGeolocation() {
-  if (!navigator.geolocation) {
-    setError('geolocation', 'not supported on this browser');
-    return;
-  }
-
-  navigator.geolocation.watchPosition(
-    (position) => {
-      currentPosition = {
-        lat: position.coords.latitude,
-        lon: position.coords.longitude,
-        accuracy: position.coords.accuracy
-      };
-
-      if (!sessionOrigin) {
-        sessionOrigin = { lat: currentPosition.lat, lon: currentPosition.lon };
-        resolveDecorationCoordinates();
-      }
-
-      updateDecorationPositions();
-      updateDebugOverlay(currentMode);
-    },
-    (error) => {
-      setError('geolocation', error.message || error);
-    },
-    { enableHighAccuracy: true, maximumAge: 1000 }
-  );
-}
-
-// Places each decoration at a FIXED position in world space, computed from
-// real GPS distance/bearing to the user's current position. Unlike the
-// original version, this does not need to run every animation frame or
-// re-derive an ad-hoc "relative angle" — the camera itself rotates via
-// device orientation, so normal 3D projection/culling makes objects appear
-// and disappear correctly as you turn or walk, the same way it would with
-// any other fixed-in-world 3D object.
-function updateDecorationPositions() {
-  if (!currentPosition || !sessionOrigin) return;
-
-  decorationMeshes.forEach(mesh => {
-    const d = mesh.userData;
-    if (!d._resolved) return;
-
-    const distance = calculateDistance(currentPosition.lat, currentPosition.lon, d.lat, d.lon);
-    const bearing = calculateBearing(currentPosition.lat, currentPosition.lon, d.lat, d.lon);
-    const bearingRad = bearing * DEG2RAD;
-
-    // World convention: -Z = true north (matches the device-orientation
-    // quaternion convention used in setCameraOrientation()).
-    const x = Math.sin(bearingRad) * distance;
-    const z = -Math.cos(bearingRad) * distance;
-
-    mesh.position.set(x, -0.5, z);
-    mesh.visible = true;
-  });
-}
-
 // ---------------------------------------------------------------------
-// Device orientation -> camera rotation (continuous, unlike the original
-// version's one-shot fallback listener).
+// Path A: WebXR-anchored (real SLAM tracking — the fix for "moves with
+// me"). Decorations are placed ONCE in the session's local reference
+// space; from then on the browser's own 6DOF tracking keeps them anchored,
+// not the compass.
 // ---------------------------------------------------------------------
 
-const _zee = new THREE.Vector3(0, 0, 1);
-const _euler = new THREE.Euler();
-const _q0 = new THREE.Quaternion();
-const _q1 = new THREE.Quaternion(-Math.sqrt(0.5), 0, 0, Math.sqrt(0.5)); // -PI/2 around x
+let xrSession, xrRefSpace, xrScene, xrCamera, xrRenderer;
 
-function setCameraOrientation(alpha, beta, gamma) {
-  if (!camera) return;
-  const screenAngle = (screen.orientation && screen.orientation.angle) || window.orientation || 0;
+async function startXRAnchored(calibratedHeadingDeg) {
+  currentMode = 'xr-anchored (SLAM)';
 
-  _euler.set(beta * DEG2RAD, alpha * DEG2RAD, -gamma * DEG2RAD, 'YXZ');
-  camera.quaternion.setFromEuler(_euler);
-  camera.quaternion.multiply(_q1);
-  camera.quaternion.multiply(_q0.setFromAxisAngle(_zee, -screenAngle * DEG2RAD));
-}
-
-function addOrientationListeners() {
-  let usingAbsolute = false;
-
-  window.addEventListener('deviceorientationabsolute', (event) => {
-    if (event.alpha === null) return;
-    usingAbsolute = true;
-    orientationSource = 'absolute';
-    setCameraOrientation(event.alpha, event.beta || 0, event.gamma || 0);
+  xrSession = await navigator.xr.requestSession('immersive-ar', {
+    optionalFeatures: ['dom-overlay'],
+    domOverlay: { root: document.body }
   });
 
-  window.addEventListener('deviceorientation', (event) => {
-    if (event.alpha === null || usingAbsolute) return; // prefer absolute when available
-    orientationSource = event.absolute ? 'absolute' : 'relative';
-    setCameraOrientation(event.alpha, event.beta || 0, event.gamma || 0);
-  });
-}
+  enterArUI();
+  updateDebugOverlay();
 
-function onWindowResize() {
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
-}
+  resolveDecorationCoordinates();
 
-function animate() {
-  requestAnimationFrame(animate);
-  if (decorationMeshes.some(m => m.userData.id.includes('star'))) {
-    decorationMeshes.forEach(m => {
-      if (m.userData.id.includes('star') && m.visible) m.rotation.y += 0.005;
-    });
-  }
-  renderer.render(scene, camera);
-}
-
-// ---------------------------------------------------------------------
-// Mode 2 (optional): real WebXR hit-testing for precise tap-to-place,
-// adapted from the arcore/ version. Offered only when the browser reports
-// 'immersive-ar' + hit-test support (mainly Android/ARCore today).
-// ---------------------------------------------------------------------
-
-let xrSession = null;
-let xrRefSpace = null;
-let xrHitTestSource = null;
-let xrScene, xrCamera, xrRenderer, xrReticle;
-let placedCount = 0;
-
-async function startPrecisionAR() {
-  currentMode = 'webxr';
-  precisionButton.disabled = true;
-
-  try {
-    xrSession = await navigator.xr.requestSession('immersive-ar', {
-      requiredFeatures: ['hit-test'],
-      optionalFeatures: ['dom-overlay'],
-      domOverlay: { root: document.body }
-    });
-
-    startScreen.hidden = true;
-    arContainer.hidden = false;
-    debugEl = document.getElementById('debugOverlay');
-    updateDebugOverlay(currentMode);
-
-    initXRScene();
-    xrSession.addEventListener('end', onXRSessionEnded);
-    xrSession.addEventListener('select', onXRSelect);
-
-    document.body.appendChild(xrRenderer.domElement);
-    await xrRenderer.xr.setSession(xrSession);
-
-    xrRefSpace = await xrSession.requestReferenceSpace('local');
-    const viewerSpace = await xrSession.requestReferenceSpace('viewer');
-    xrHitTestSource = await xrSession.requestHitTestSource({ space: viewerSpace });
-
-    xrSession.requestAnimationFrame(onXRFrame);
-  } catch (error) {
-    setError('startPrecisionAR', error);
-    alert('Could not start precision AR: ' + (error.message || error));
-    precisionButton.disabled = false;
-  }
-}
-
-function initXRScene() {
   xrScene = new THREE.Scene();
-
   const ambientLight = new THREE.AmbientLight(0xffffff, 1);
   xrScene.add(ambientLight);
   const directionalLight = new THREE.DirectionalLight(0xffffff, 0.6);
   directionalLight.position.set(0, 1, 1);
   xrScene.add(directionalLight);
 
-  // Simple ring reticle — no external glTF fetch required, so it can't
-  // fail due to a blocked/slow third-party asset load.
-  const reticleGeometry = new THREE.RingGeometry(0.07, 0.09, 32).rotateX(-Math.PI / 2);
-  const reticleMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff88 });
-  xrReticle = new THREE.Mesh(reticleGeometry, reticleMaterial);
-  xrReticle.visible = false;
-  xrReticle.matrixAutoUpdate = false;
-  xrScene.add(xrReticle);
+  // Place every decoration once, using the true GPS bearing/distance from
+  // the session's start position, rotated into the XR session's own local
+  // coordinate frame via the one-time compass calibration. No further
+  // repositioning happens — SLAM tracking (not compass) holds these in
+  // place as the viewer walks and looks around.
+  christmasDecorations.forEach(d => {
+    const trueBearing = calculateBearing(sessionOrigin.lat, sessionOrigin.lon, d.lat, d.lon);
+    const angle = (trueBearing - calibratedHeadingDeg) * DEG2RAD;
+    const mesh = createDecorationMesh(d.type, d.color, d.scale);
+    mesh.position.set(
+      Math.sin(angle) * d.distance,
+      -0.5,
+      -Math.cos(angle) * d.distance
+    );
+    xrScene.add(mesh);
+  });
 
   xrRenderer = new THREE.WebGLRenderer({ alpha: true, canvas: document.createElement('canvas') });
   xrRenderer.autoClear = false;
   xrRenderer.xr.enabled = true;
 
-  xrCamera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 20);
+  xrCamera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 1000);
   xrCamera.matrixAutoUpdate = false;
-}
 
-function onXRSelect() {
-  if (!xrReticle.visible) return;
+  document.body.appendChild(xrRenderer.domElement);
+  await xrRenderer.xr.setSession(xrSession);
 
-  // Cycle through decoration types so repeated taps place different objects.
-  const types = christmasDecorations.map(d => d.type);
-  const type = types[placedCount % types.length];
-  const color = christmasDecorations[placedCount % christmasDecorations.length].color;
+  xrRefSpace = await xrSession.requestReferenceSpace('local');
 
-  const mesh = createDecorationMesh(type, color, '5 5 5');
-  mesh.position.setFromMatrixPosition(xrReticle.matrix);
-  xrScene.add(mesh);
-  placedCount++;
-  updateDebugOverlay(currentMode);
+  xrSession.addEventListener('end', onXRSessionEnded);
+  xrSession.requestAnimationFrame(onXRFrame);
 }
 
 function onXRFrame(time, frame) {
   const session = frame.session;
   session.requestAnimationFrame(onXRFrame);
-
-  if (xrHitTestSource) {
-    const hitTestResults = frame.getHitTestResults(xrHitTestSource);
-    if (hitTestResults.length > 0) {
-      const pose = hitTestResults[0].getPose(xrRefSpace);
-      xrReticle.visible = true;
-      xrReticle.matrix.fromArray(pose.transform.matrix);
-    } else {
-      xrReticle.visible = false;
-    }
-  }
 
   const pose = frame.getViewerPose(xrRefSpace);
   if (pose) {
@@ -490,5 +346,164 @@ function onXRSessionEnded() {
   }
   arContainer.hidden = true;
   startScreen.hidden = false;
-  precisionButton.disabled = false;
+  startButton.disabled = false;
+  setStatus('');
+}
+
+// ---------------------------------------------------------------------
+// Path B: camera + GPS + smoothed compass fallback (iOS / no WebXR).
+// Positions are re-derived from live GPS on each fix (stable — this is
+// plain geometry, not compass-dependent); only the camera's on-screen
+// orientation depends on the compass, and that's now damped frame to
+// frame instead of snapping to raw sensor noise.
+// ---------------------------------------------------------------------
+
+let camera, scene, renderer, video, stream;
+let decorationMeshes = [];
+const _targetQuaternion = new THREE.Quaternion();
+const _zee = new THREE.Vector3(0, 0, 1);
+const _euler = new THREE.Euler();
+const _q0 = new THREE.Quaternion();
+const _q1 = new THREE.Quaternion(-Math.sqrt(0.5), 0, 0, Math.sqrt(0.5)); // -PI/2 around x
+let haveOrientation = false;
+
+async function startCompassFallback() {
+  currentMode = 'compass-fallback (less stable — no WebXR on this browser)';
+
+  stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+
+  enterArUI();
+  resolveDecorationCoordinates();
+
+  video = document.createElement('video');
+  video.srcObject = stream;
+  video.setAttribute('playsinline', true);
+  video.play();
+
+  video.addEventListener('loadedmetadata', () => {
+    initFallbackScene();
+    addOrientationListeners();
+    watchGeolocation();
+    animateFallback();
+    updateDebugOverlay();
+  });
+}
+
+function initFallbackScene() {
+  scene = new THREE.Scene();
+
+  const aspect = window.innerWidth / window.innerHeight;
+  camera = new THREE.PerspectiveCamera(75, aspect, 0.1, 1000);
+  camera.rotation.reorder('YXZ');
+  camera.position.set(0, 0, 0);
+
+  renderer = new THREE.WebGLRenderer({ canvas, alpha: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+
+  const videoTexture = new THREE.VideoTexture(video);
+  videoTexture.minFilter = THREE.LinearFilter;
+  videoTexture.magFilter = THREE.LinearFilter;
+
+  const videoMaterial = new THREE.MeshBasicMaterial({ map: videoTexture, depthTest: false, depthWrite: false });
+  const videoMesh = new THREE.Mesh(new THREE.PlaneGeometry(4, 4), videoMaterial);
+  videoMesh.position.set(0, 0, -2);
+  videoMesh.renderOrder = -1;
+  camera.add(videoMesh); // child of camera so it always fills the frame
+  scene.add(camera);
+
+  const ambientLight = new THREE.AmbientLight(0xffffff, 0.9);
+  scene.add(ambientLight);
+  const directionalLight = new THREE.DirectionalLight(0xffffff, 0.7);
+  directionalLight.position.set(1, 1, 1);
+  scene.add(directionalLight);
+
+  decorationMeshes = christmasDecorations.map(d => {
+    const mesh = createDecorationMesh(d.type, d.color, d.scale);
+    mesh.userData = d;
+    mesh.visible = false;
+    scene.add(mesh);
+    return mesh;
+  });
+
+  window.addEventListener('resize', onWindowResize);
+}
+
+function watchGeolocation() {
+  navigator.geolocation.watchPosition(
+    (position) => {
+      currentPosition = {
+        lat: position.coords.latitude,
+        lon: position.coords.longitude,
+        accuracy: position.coords.accuracy
+      };
+      updateDecorationPositions();
+      updateDebugOverlay();
+    },
+    (error) => setError('geolocation', error.message || error),
+    { enableHighAccuracy: true, maximumAge: 1000 }
+  );
+}
+
+function updateDecorationPositions() {
+  if (!currentPosition) return;
+  decorationMeshes.forEach(mesh => {
+    const d = mesh.userData;
+    const distance = calculateDistance(currentPosition.lat, currentPosition.lon, d.lat, d.lon);
+    const bearing = calculateBearing(currentPosition.lat, currentPosition.lon, d.lat, d.lon);
+    const bearingRad = bearing * DEG2RAD;
+
+    mesh.position.set(
+      Math.sin(bearingRad) * distance,
+      -0.5,
+      -Math.cos(bearingRad) * distance
+    );
+    mesh.visible = true;
+  });
+}
+
+function setTargetOrientation(alpha, beta, gamma) {
+  const screenAngle = (screen.orientation && screen.orientation.angle) || window.orientation || 0;
+  _euler.set(beta * DEG2RAD, alpha * DEG2RAD, -gamma * DEG2RAD, 'YXZ');
+  _targetQuaternion.setFromEuler(_euler);
+  _targetQuaternion.multiply(_q1);
+  _targetQuaternion.multiply(_q0.setFromAxisAngle(_zee, -screenAngle * DEG2RAD));
+  haveOrientation = true;
+}
+
+function addOrientationListeners() {
+  let usingAbsolute = false;
+
+  window.addEventListener('deviceorientationabsolute', (event) => {
+    if (event.alpha === null) return;
+    usingAbsolute = true;
+    setTargetOrientation(event.alpha, event.beta || 0, event.gamma || 0);
+  });
+
+  window.addEventListener('deviceorientation', (event) => {
+    if (event.alpha === null || usingAbsolute) return;
+    setTargetOrientation(event.alpha, event.beta || 0, event.gamma || 0);
+  });
+}
+
+function onWindowResize() {
+  if (!camera) return;
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+function animateFallback() {
+  requestAnimationFrame(animateFallback);
+
+  // Damp toward the latest sensor reading instead of snapping straight to
+  // it — this is what smooths out magnetometer jitter frame to frame.
+  if (haveOrientation) {
+    camera.quaternion.slerp(_targetQuaternion, 0.2);
+  }
+
+  decorationMeshes.forEach(m => {
+    if (m.userData.id.includes('star') && m.visible) m.rotation.y += 0.005;
+  });
+
+  renderer.render(scene, camera);
 }

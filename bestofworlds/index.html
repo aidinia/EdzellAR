@@ -10,16 +10,12 @@
     <div id="startScreen">
       <h1>🎄 AR Christmas Decorations</h1>
       <p>
-        Works on Android &amp; iOS via camera + GPS + compass. On devices with
-        ARCore/WebXR hit-testing support, you can also enable a more precise
-        tap-to-place mode.
+        Automatically uses real WebXR anchored tracking where supported
+        (steadiest — won't drift or chase you as you move), and falls back to
+        camera + GPS + compass on browsers without WebXR (e.g. iOS Safari).
       </p>
       <button id="startAR">Start AR Experience</button>
-      <button id="startPrecisionAR" hidden>Enable Precision AR (WebXR)</button>
-      <p id="unsupportedMsg" hidden>
-        Precision (WebXR) mode isn't supported on this device/browser — the
-        camera + GPS mode above still works.
-      </p>
+      <p id="startStatus"></p>
     </div>
 
     <div id="arContainer" hidden>

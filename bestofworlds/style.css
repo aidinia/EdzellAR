@@ -4,7 +4,7 @@ body {
   overflow: hidden;
   font-family: Arial, sans-serif;
   height: 100vh;
-  background: linear-gradient(135deg, #0b0b1a 0%, #1b1b3a 100%);
+  background: linear-gradient(135deg, #1a0b0b 0%, #3a1b1b 100%);
   color: white;
 }
 
@@ -59,14 +59,10 @@ button:disabled {
   transform: none;
 }
 
-#startPrecisionAR {
-  background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-}
-
-#unsupportedMsg {
-  font-size: 12px;
-  opacity: 0.6;
-  max-width: 340px;
+#startStatus {
+  font-size: 13px;
+  opacity: 0.8;
+  min-height: 18px;
 }
 
 #arContainer {
