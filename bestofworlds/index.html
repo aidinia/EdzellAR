@@ -1,1 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>AR Christmas Decorations</title>
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body>
+    <div id="startScreen">
+      <h1>🎄 AR Christmas Decorations</h1>
+      <p>
+        Works on Android &amp; iOS via camera + GPS + compass. On devices with
+        ARCore/WebXR hit-testing support, you can also enable a more precise
+        tap-to-place mode.
+      </p>
+      <button id="startAR">Start AR Experience</button>
+      <button id="startPrecisionAR" hidden>Enable Precision AR (WebXR)</button>
+      <p id="unsupportedMsg" hidden>
+        Precision (WebXR) mode isn't supported on this device/browser — the
+        camera + GPS mode above still works.
+      </p>
+    </div>
 
+    <div id="arContainer" hidden>
+      <canvas id="arCanvas"></canvas>
+      <div id="debugOverlay"></div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="decorations.js"></script>
+    <script src="script.js"></script>
+  </body>
+</html>
