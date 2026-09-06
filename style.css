@@ -23,6 +23,14 @@ html, body {
   z-index: 10;
 }
 
+/* #start-screen's own `display: flex` above beats the browser's default
+   `[hidden] { display: none }` rule (ID selector outranks attribute
+   selector), so `startScreen.hidden = true` in script.js was being
+   silently ignored. This rule's specificity (ID + attribute) wins instead. */
+#start-screen[hidden] {
+  display: none;
+}
+
 #start-screen h1 {
   font-size: 1.6rem;
   margin: 0 0 12px;
@@ -49,9 +57,9 @@ html, body {
   /* DELIBERATELY changed on every deploy (color only, nothing functional) —
      a quick visual "is this actually the newest version?" check when
      reloading on a phone after a manual GitHub upload. Bump this any time
-     a change is made, even unrelated ones. Current: teal. */
-  background: #14d4c4;
-  color: #04302b;
+     a change is made, even unrelated ones. Current: magenta. */
+  background: #e619b3;
+  color: #2e0524;
   font-weight: 700;
   cursor: pointer;
 }
