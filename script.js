@@ -16,6 +16,20 @@ const dbgLat = document.getElementById('dbg-lat');
 const dbgLon = document.getElementById('dbg-lon');
 const dbgAcc = document.getElementById('dbg-acc');
 const dbgCount = document.getElementById('dbg-count');
+const dbgNearest = document.getElementById('dbg-nearest');
+
+// Haversine distance in meters — used only for the debug readout below, to
+// answer "am I even close enough to any decoration to see it?" without
+// having to manually compare lat/lon by eye.
+function distanceMeters(lat1, lon1, lat2, lon2) {
+  const R = 6371000;
+  const toRad = (d) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a = Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
 
 startBtn.addEventListener('click', start);
 debugToggle.addEventListener('click', () => { debugPanel.hidden = !debugPanel.hidden; });
@@ -77,14 +91,34 @@ function launchScene() {
   const camera = document.createElement('a-camera');
   camera.setAttribute('gps-camera', 'gpsMinDistance: 2');
   camera.setAttribute('rotation-reader', '');
-  camera.addEventListener('gps-camera-update-position', (e) => {
-    dbgLat.textContent = e.detail.position.latitude.toFixed(6);
-    dbgLon.textContent = e.detail.position.longitude.toFixed(6);
-    if (e.detail.position.accuracy) dbgAcc.textContent = Math.round(e.detail.position.accuracy);
+  // AR.js dispatches this on `window`, not on the camera entity — it's a
+  // plain window.dispatchEvent(new CustomEvent(...)) internally, which does
+  // NOT bubble down to any element. Listening on `camera` here silently
+  // never fired, which is why the debug panel stayed blank.
+  window.addEventListener('gps-camera-update-position', (e) => {
+    const { latitude, longitude, accuracy } = e.detail.position;
+    dbgLat.textContent = latitude.toFixed(6);
+    dbgLon.textContent = longitude.toFixed(6);
+    if (accuracy) dbgAcc.textContent = Math.round(accuracy);
+
+    let nearest = null;
+    decorations.forEach((deco) => {
+      const d = distanceMeters(latitude, longitude, deco.lat, deco.lon);
+      if (!nearest || d < nearest.d) nearest = { d, deco };
+    });
+    if (nearest) {
+      dbgNearest.textContent = `${nearest.deco.label} — ${Math.round(nearest.d)} m away`;
+    }
   });
   scene.appendChild(camera);
 
   decorations.forEach((deco) => scene.appendChild(buildDecorationEntity(deco)));
+  // NOTE: this is just the count of decorations queued into the scene, not
+  // confirmation any of them actually placed near you — gps-entity-place
+  // positions each one relative to your real GPS fix, which only exists
+  // once "lat"/"lon" above are populated. Compare those against the
+  // coordinates in decorations.js: if you're not within visual range of
+  // those placeholder points, nothing will appear on screen.
   dbgCount.textContent = decorations.length;
 
   sceneContainer.appendChild(scene);

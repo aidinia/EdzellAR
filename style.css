@@ -57,9 +57,9 @@ html, body {
   /* DELIBERATELY changed on every deploy (color only, nothing functional) —
      a quick visual "is this actually the newest version?" check when
      reloading on a phone after a manual GitHub upload. Bump this any time
-     a change is made, even unrelated ones. Current: magenta. */
-  background: #e619b3;
-  color: #2e0524;
+     a change is made, even unrelated ones. Current: lime. */
+  background: #7ef73f;
+  color: #16330a;
   font-weight: 700;
   cursor: pointer;
 }

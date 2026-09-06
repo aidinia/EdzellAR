@@ -25,8 +25,8 @@
 const decorations = [
   {
     id: 'pumpkin-1',
-    lat: 56.8493829,
-    lon: -2.6442137,
+    lat: 56.815539, 
+    lon: -2.619037,
     shape: 'sphere',
     color: '#ff7518', // pumpkin orange
     scale: '2 2 2',
@@ -34,8 +34,8 @@ const decorations = [
   },
   {
     id: 'ghost-1',
-    lat: 56.8494278,
-    lon: -2.6438858,
+    lat: 56.815751, 
+    lon: -2.619502,
     shape: 'cone',
     color: '#f5f5f5',
     scale: '2 3 2',
@@ -43,8 +43,8 @@ const decorations = [
   },
   {
     id: 'spider-1',
-    lat: 56.8490685,
-    lon: -2.6447055,
+    lat: 56.815245, 
+    lon: -2.618543,
     shape: 'octahedron',
     color: '#1a1a1a',
     scale: '2 2 2',
