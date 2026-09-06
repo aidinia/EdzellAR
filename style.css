@@ -46,8 +46,12 @@ html, body {
   padding: 14px 36px;
   border: none;
   border-radius: 999px;
-  background: #ff7518;
-  color: #1a0f00;
+  /* DELIBERATELY changed on every deploy (color only, nothing functional) —
+     a quick visual "is this actually the newest version?" check when
+     reloading on a phone after a manual GitHub upload. Bump this any time
+     a change is made, even unrelated ones. Current: teal. */
+  background: #14d4c4;
+  color: #04302b;
   font-weight: 700;
   cursor: pointer;
 }
