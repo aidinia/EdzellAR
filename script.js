@@ -89,7 +89,17 @@ function launchScene() {
   scene.setAttribute('renderer', 'antialias: true; alpha: true');
 
   const camera = document.createElement('a-camera');
-  camera.setAttribute('gps-camera', 'gpsMinDistance: 2');
+  // gpsMinDistance: only recompute position after moving this many meters —
+  // was 2, which is *more* twitchy than AR.js's own default (5); raised to
+  // smooth out GPS noise while standing still.
+  // positionMinAccuracy: ignore any GPS reading reporting worse than this
+  // many meters of accuracy — defaults to 100 (barely filters anything),
+  // which let noisy/bad fixes constantly jump the decorations around. This
+  // is the main fix for "shaky" placement.
+  // alert: shows AR.js's built-in "GPS signal is very poor" banner
+  // whenever readings are being rejected, so it's obvious *why* things
+  // aren't moving rather than it looking frozen/broken.
+  camera.setAttribute('gps-camera', 'gpsMinDistance: 8; positionMinAccuracy: 25; alert: true');
   camera.setAttribute('rotation-reader', '');
   // AR.js dispatches this on `window`, not on the camera entity — it's a
   // plain window.dispatchEvent(new CustomEvent(...)) internally, which does

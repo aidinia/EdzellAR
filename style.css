@@ -10,6 +10,25 @@ html, body {
   overflow: hidden;
 }
 
+/* AR.js creates this div itself (gps-camera's `alert: true` option) when
+   GPS accuracy is too poor to trust — it ships with no CSS of its own, so
+   without this it'd render as an unstyled raw div. */
+#alert-popup {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+  max-width: 90vw;
+  padding: 10px 20px;
+  border-radius: 10px;
+  background: rgba(20, 8, 30, 0.9);
+  border: 1px solid #ff7518;
+  color: #f2f2f2;
+  font-size: 0.9rem;
+  text-align: center;
+}
+
 #start-screen {
   position: fixed;
   inset: 0;
@@ -57,9 +76,9 @@ html, body {
   /* DELIBERATELY changed on every deploy (color only, nothing functional) —
      a quick visual "is this actually the newest version?" check when
      reloading on a phone after a manual GitHub upload. Bump this any time
-     a change is made, even unrelated ones. Current: lime. */
-  background: #7ef73f;
-  color: #16330a;
+     a change is made, even unrelated ones. Current: sky blue. */
+  background: #3fb8f7;
+  color: #05202e;
   font-weight: 700;
   cursor: pointer;
 }

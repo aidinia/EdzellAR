@@ -52,8 +52,8 @@ const decorations = [
   },
   {
     id: 'witchhat-1',
-    lat: 56.8492032,
-    lon: -2.6437219,
+    lat: 56.815713, 
+    lon: -2.618906,
     shape: 'cone',
     color: '#4b0082',
     scale: '2 3 2',
