@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Edzell Halloween AR Walk</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <link rel="stylesheet" href="style.css">
+
+  <!-- A-Frame: 3D/WebXR scene framework -->
+  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+  <!-- AR.js location-based build: adds gps-camera / gps-entity-place components -->
+  <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.5/aframe/build/aframe-ar.js"></script>
+</head>
+<body>
+
+  <!-- Start screen: AR can't be entered automatically, camera/motion/location
+       permissions must be requested from a user tap (this matters especially
+       on iOS Safari, which blocks the compass API until a click happens). -->
+  <div id="start-screen">
+    <h1>🎃 Edzell Halloween AR Walk</h1>
+    <p>Step outside, hold your phone up, and tap start.<br>You'll be asked for camera, location, and (on iPhone) motion access — allow all three.</p>
+    <button id="start-btn">Start AR</button>
+    <p id="status"></p>
+    <p class="hint">Phase 1 mock-up: decorations are plain shapes for now, just to prove the positions work. Real 3D models come later.</p>
+  </div>
+
+  <!-- Small debug readout so we can tell, while testing outdoors, whether
+       GPS/heading are actually updating. Toggle-able, hidden by default. -->
+  <div id="debug-panel" hidden>
+    <div>lat: <span id="dbg-lat">–</span></div>
+    <div>lon: <span id="dbg-lon">–</span></div>
+    <div>accuracy: <span id="dbg-acc">–</span> m</div>
+    <div>decorations placed: <span id="dbg-count">0</span></div>
+  </div>
+  <button id="debug-toggle" hidden>debug</button>
+
+  <!-- The <a-scene> itself is created in JS, only after the Start button is
+       tapped. If it existed in the page from load, AR.js would try to open
+       the camera immediately on page load rather than after a user
+       gesture — Safari in particular blocks/queues permissions oddly when
+       that happens. -->
+  <div id="scene-container"></div>
+
+  <script src="decorations.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
