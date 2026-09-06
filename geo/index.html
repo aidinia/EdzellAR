@@ -1,1 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Edzell Halloween AR Walk — WebXR experiment</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <link rel="stylesheet" href="style.css">
 
+  <!-- A-Frame: no AR.js here at all. WebXR's immersive-ar session handles
+       the camera passthrough and real device tracking natively — see
+       README.md for why this build doesn't need AR.js's webcam mode. -->
+  <script src="https://aframe.io/releases/1.8.0/aframe.min.js"></script>
+</head>
+<body>
+
+  <div id="start-screen">
+    <h1>🎃 Edzell Halloween AR Walk</h1>
+    <p class="experiment-tag">WebXR experiment build</p>
+    <p>Step outside, hold your phone up, and tap start.<br>You'll be asked for location and (on Android) motion/compass access — allow both.</p>
+    <button id="start-btn">Start AR</button>
+    <p id="status"></p>
+    <p class="hint">Requires Chrome for Android (ARCore). This will not work on iPhone/Safari — WebXR AR sessions aren't supported there. Use the main site instead on iOS.</p>
+  </div>
+
+  <div id="debug-panel" hidden>
+    <div>origin lat: <span id="dbg-lat">–</span></div>
+    <div>origin lon: <span id="dbg-lon">–</span></div>
+    <div>heading: <span id="dbg-heading">–</span>°</div>
+    <div>decorations placed: <span id="dbg-count">0</span></div>
+    <div>nearest: <span id="dbg-nearest">–</span></div>
+    <button id="recalibrate-btn">Recalibrate (re-read GPS + heading)</button>
+  </div>
+  <button id="debug-toggle" hidden>debug</button>
+
+  <div id="scene-container"></div>
+
+  <script src="decorations.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
