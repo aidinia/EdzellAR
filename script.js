@@ -31,6 +31,31 @@ function distanceMeters(lat1, lon1, lat2, lon2) {
   return 2 * R * Math.asin(Math.sqrt(a));
 }
 
+// A-Frame's default look-controls applies raw compass/gyro readings to the
+// camera every frame with no filtering at all, so any sensor noise (there's
+// always some — magnetometer interference, hand tremor) shows up directly
+// as visible shake. This damps rotation by blending toward the real
+// reading each frame instead of snapping straight to it — smoother, at the
+// cost of a little lag when you turn quickly. Lower `damping` = smoother
+// but laggier; 1 = no smoothing at all.
+AFRAME.registerComponent('smooth-rotation', {
+  schema: { damping: { default: 0.2 } },
+  init: function () {
+    this.smoothed = new THREE.Quaternion();
+    this.ready = false;
+  },
+  tick: function () {
+    const q = this.el.object3D.quaternion;
+    if (!this.ready) {
+      this.smoothed.copy(q);
+      this.ready = true;
+      return;
+    }
+    this.smoothed.slerp(q, this.data.damping);
+    q.copy(this.smoothed);
+  }
+});
+
 startBtn.addEventListener('click', start);
 debugToggle.addEventListener('click', () => { debugPanel.hidden = !debugPanel.hidden; });
 
@@ -99,8 +124,14 @@ function launchScene() {
   // alert: shows AR.js's built-in "GPS signal is very poor" banner
   // whenever readings are being rejected, so it's obvious *why* things
   // aren't moving rather than it looking frozen/broken.
-  camera.setAttribute('gps-camera', 'gpsMinDistance: 8; positionMinAccuracy: 25; alert: true');
+  // maxDistance: hides any decoration farther than this many meters away —
+  // NOT real occlusion (AR.js has no idea a house/wall exists and can't
+  // block line of sight to something behind one), just a visibility
+  // radius so far-off decorations don't clutter the view. Tune this
+  // per how spread out your decorations end up being.
+  camera.setAttribute('gps-camera', 'gpsMinDistance: 8; positionMinAccuracy: 25; alert: true; maxDistance: 30');
   camera.setAttribute('rotation-reader', '');
+  camera.setAttribute('smooth-rotation', '');
   // AR.js dispatches this on `window`, not on the camera entity — it's a
   // plain window.dispatchEvent(new CustomEvent(...)) internally, which does
   // NOT bubble down to any element. Listening on `camera` here silently
