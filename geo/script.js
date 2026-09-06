@@ -237,8 +237,20 @@ function launchScene() {
 
   const scene = document.createElement('a-scene');
   // Our own Start button already handled the permission/entry flow, so we
-  // don't want A-Frame's own injected "Enter AR" button on top of it.
-  scene.setAttribute('vr-mode-ui', 'enabled: false');
+  // don't want A-Frame's own injected enter-immersive button on top of it.
+  // NOTE: the component is `xr-mode-ui` on this A-Frame version (1.8.0) —
+  // it was renamed from the older `vr-mode-ui` used in the main project's
+  // AR.js build (pinned to A-Frame 1.3.0). Setting the old name here did
+  // nothing, silently, which is why A-Frame's default button kept
+  // showing — and its default mode is "vr", which is exactly why tapping
+  // it tried to start a VR session instead of AR.
+  scene.setAttribute('xr-mode-ui', 'enabled: false');
+  // dom-overlay: without requesting this, none of the page's normal HTML
+  // (debug panel, debug/recalibrate buttons) renders at all once the AR
+  // session takes over the screen — it's not optional-but-nice, it's the
+  // only way regular DOM content shows up over a WebXR session. Point it
+  // at <body> so everything already in the page overlays correctly.
+  scene.setAttribute('webxr', 'optionalFeatures: dom-overlay; overlayElement: body;');
   scene.setAttribute('renderer', 'colorManagement: true; alpha: true');
 
   const camera = document.createElement('a-entity');
