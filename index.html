@@ -24,6 +24,12 @@
       // only by design anyway, so also require an Android user agent —
       // that alone rules out the desktop false-positive case.
       if (!/Android/i.test(navigator.userAgent)) return;
+      // If geo/ already tried and failed to actually open an AR session on
+      // this browser, isSessionSupported still reporting true would send us
+      // straight back there, which sends us straight back here on failure —
+      // an infinite redirect loop. This flag (set by geo/script.js right
+      // before it bounces back) is what breaks that.
+      try { if (localStorage.getItem('edzellar-webxr-ar-failed')) return; } catch (e) { /* storage unavailable, proceed with the normal check */ }
       if (!navigator.xr || typeof navigator.xr.isSessionSupported !== 'function') return;
       navigator.xr.isSessionSupported('immersive-ar').then(function (supported) {
         if (supported) window.location.replace('geo/');
