@@ -43,7 +43,7 @@ const decorations = [
   {
     id: 'pumpkin-1',
     lat: 56.815505, 
-    lon: -2.620957
+    lon: -2.620957,
     shape: 'sphere',
     color: '#ff7518', // pumpkin orange
     scale: '2 2 2',
