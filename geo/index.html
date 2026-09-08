@@ -15,6 +15,13 @@
   <script>
     (function () {
       function bounceToMainSite() { window.location.replace('../'); }
+      // Mirrors the main page's check (see its comment for why): also
+      // require Android, since isSessionSupported alone can false-positive
+      // on desktop browsers with any OpenXR runtime registered.
+      if (!/Android/i.test(navigator.userAgent)) {
+        bounceToMainSite();
+        return;
+      }
       if (!navigator.xr || typeof navigator.xr.isSessionSupported !== 'function') {
         bounceToMainSite();
         return;

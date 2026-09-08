@@ -127,6 +127,17 @@ function captureHeading(durationMs) {
 async function start() {
   startBtn.disabled = true;
 
+  // isSessionSupported alone can false-positive on desktop browsers with
+  // any OpenXR runtime registered (SteamVR, a headset driver, a WebXR
+  // emulator extension...) — this build is Android/Chrome/ARCore only by
+  // design, so require that platform too rather than trusting the API's
+  // self-reported answer on its own. See index.html's matching check.
+  if (!/Android/i.test(navigator.userAgent)) {
+    statusEl.textContent = 'This experiment needs Chrome for Android — try the main site instead.';
+    startBtn.disabled = false;
+    return;
+  }
+
   if (!navigator.xr) {
     statusEl.textContent = 'WebXR isn’t available in this browser. This experiment needs Chrome for Android — try the main site instead.';
     startBtn.disabled = false;
