@@ -6,6 +6,25 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <link rel="stylesheet" href="style.css">
 
+  <!-- Safety net for anyone who opens this URL directly (a shared/bookmarked
+       geo/ link) on a device that can't actually run WebXR AR — bounce back
+       to the main AR.js site instead of a dead end. The main page's own
+       redirect (the mirror of this check) is what normally sends capable
+       devices here in the first place; this just closes the loop so either
+       URL always lands on a build that works. -->
+  <script>
+    (function () {
+      function bounceToMainSite() { window.location.replace('../'); }
+      if (!navigator.xr || typeof navigator.xr.isSessionSupported !== 'function') {
+        bounceToMainSite();
+        return;
+      }
+      navigator.xr.isSessionSupported('immersive-ar').then(function (supported) {
+        if (!supported) bounceToMainSite();
+      }).catch(bounceToMainSite);
+    })();
+  </script>
+
   <!-- A-Frame: no AR.js here at all. WebXR's immersive-ar session handles
        the camera passthrough and real device tracking natively — see
        README.md for why this build doesn't need AR.js's webcam mode. -->
@@ -34,7 +53,9 @@
 
   <div id="scene-container"></div>
 
-  <script src="decorations.js"></script>
+  <!-- Shared with the main site one folder up — a single source of truth,
+       not a copy. Edit ../decorations.js and both builds pick it up. -->
+  <script src="../decorations.js"></script>
   <script src="script.js"></script>
 </body>
 </html>
