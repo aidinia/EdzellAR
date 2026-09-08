@@ -10,8 +10,12 @@
 //     (box, sphere, cone, octahedron, ...) with `color` as a hex string.
 //
 //   model — a real 3D model instead, e.g. a Sketchfab .glb download. Set
-//     this to the file's path (e.g. 'models/pumpkin.glb') and drop `shape`/
-//     `color` — they're ignored once `model` is present. Optionally add a
+//     this to the file's path WRITTEN RELATIVE TO THIS FILE'S OWN FOLDER
+//     (the project root, e.g. 'models/pumpkin.glb') — not relative to
+//     whichever page happens to load it. geo/script.js automatically
+//     prepends '../' since it's one folder down; don't add that yourself,
+//     and don't write these paths as if relative to geo/. Drop `shape`/
+//     `color` once `model` is set — they're ignored. Optionally add a
 //     `rotation` string ('x y z' degrees) if the model isn't upright as
 //     exported.
 //
@@ -73,9 +77,9 @@ const decorations = [
     lat: 56.815713, 
     lon: -2.618906,
    // shape: 'cone',
-     model: 'models/witchs_hat.glb',
+     model: './models/witchs_hat.glb',
     //color: '#4b0082',
-    scale: '2 3 2',
+    scale: '4 6 4',
     label: 'Witch Hat'
   },
   {
