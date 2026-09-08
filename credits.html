@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Edzell Halloween AR Walk — Credits</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="credits-page">
+
+  <main class="credits-main">
+    <h1>🎃 Credits</h1>
+    <p class="credits-intro">
+      3D models used in the Halloween AR walk, and who made them.
+      Shared by <a href="index.html">the main site</a> and the
+      <a href="geo/index.html">WebXR build</a> — both use the same
+      <code>decorations.js</code>, generated from it automatically.
+    </p>
+
+    <ul id="credits-list" class="credits-list"></ul>
+
+    <p id="no-models-note" class="credits-note" hidden>
+      No downloaded 3D models yet — every decoration is still a Phase 1
+      placeholder shape, so there's nothing to credit here yet.
+    </p>
+
+    <p class="credits-note">
+      Built with <a href="https://aframe.io/" target="_blank" rel="noopener">A-Frame</a>
+      and <a href="https://ar-js-org.github.io/AR.js-Docs/" target="_blank" rel="noopener">AR.js</a>
+      (both open source).
+    </p>
+
+    <p class="credits-back"><a href="index.html">← Back to the AR walk</a></p>
+  </main>
+
+  <script src="decorations.js"></script>
+  <script>
+    const list = document.getElementById('credits-list');
+
+    // The same model file can be placed multiple times (e.g. two witch
+    // hats at different spots) — group by the actual file so it's credited
+    // once, not once per placement. Normalize a leading './' since
+    // decorations.js entries have been written both ways for the same file.
+    const normalizeModelPath = (path) => path.replace(/^\.\//, '');
+
+    const byModel = new Map();
+    decorations.filter((deco) => deco.model).forEach((deco) => {
+      const key = normalizeModelPath(deco.model);
+      if (!byModel.has(key)) {
+        byModel.set(key, { labels: new Set(), count: 0, credit: null });
+      }
+      const group = byModel.get(key);
+      group.labels.add(deco.label);
+      group.count++;
+      if (!group.credit && deco.credit) group.credit = deco.credit;
+    });
+
+    if (byModel.size === 0) {
+      document.getElementById('no-models-note').hidden = false;
+    }
+
+    byModel.forEach((group, modelPath) => {
+      const li = document.createElement('li');
+      li.className = 'credit-card';
+      const name = [...group.labels].join(', ') + (group.count > 1 ? ` (×${group.count})` : '');
+
+      if (group.credit) {
+        // `credit` can be a plain string ("Witch's Hat by kolodzey") or an
+        // object ({ author, url, license }) — support both rather than
+        // forcing one particular shape.
+        const isObj = typeof group.credit === 'object';
+        const text = isObj
+          ? [group.credit.author && 'by ' + group.credit.author, group.credit.license].filter(Boolean).join(' — ')
+          : group.credit;
+        const url = isObj ? group.credit.url : null;
+        li.innerHTML = `
+          <strong>${name}</strong>
+          ${text ? `<span class="credit-meta">${text}</span>` : ''}
+          ${url ? `<a href="${url}" target="_blank" rel="noopener">View source ↗</a>` : ''}
+        `;
+      } else {
+        li.className += ' credit-card--missing';
+        li.innerHTML = `
+          <strong>${name}</strong>
+          <span class="credit-meta">⚠ attribution info needed — see decorations.js (\`${modelPath}\`)</span>
+        `;
+      }
+      list.appendChild(li);
+    });
+  </script>
+</body>
+</html>

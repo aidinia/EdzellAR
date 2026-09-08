@@ -19,6 +19,19 @@
 //     `rotation` string ('x y z' degrees) if the model isn't upright as
 //     exported.
 //
+//   credit — attribution info for a downloaded `model`, shown on
+//     credits.html (linked from both start screens). Either a plain string:
+//       credit: "Witch's Hat by kolodzey"
+//     or an object if you want a clickable source link:
+//       credit: { author: 'Jane Doe', url: 'https://sketchfab.com/3d-models/...', license: 'CC-BY 4.0' }
+//     Any decoration with a `model` but no `credit` shows up on that page
+//     flagged as needing attribution info — fill this in as you add each
+//     model rather than leaving it for later, even for CC0 models (still
+//     worth recording the source). Multiple decorations sharing the same
+//     `model` file (e.g. two witch hats) are credited once, not once per
+//     placement — write the same path both times (with or without a
+//     leading './', credits.html treats those the same).
+//
 //   scale — applies either way. Sketchfab exports aren't guaranteed to come
 //     out at any particular real-world size, so this usually needs tuning
 //     by eye once you actually see the model in AR (start around '1 1 1'
@@ -51,7 +64,9 @@ const decorations = [
     shape: 'sphere',
     color: '#ff7518', // pumpkin orange
     scale: '2 2 2',
-    label: 'Pumpkin Patch'
+    label: 'Pumpkin Patch',
+    model: './models/halloween_pumpkin.glb',
+    credit: 'Halloween Pumpkin by KIRE'
   },
   {
     id: 'ghost-1',
@@ -60,7 +75,9 @@ const decorations = [
     shape: 'cone',
     color: '#f5f5f5',
     scale: '2 3 2',
-    label: 'Ghost'
+    label: 'Ghost',
+    credit: 'Ghost w/ Tophat by Noby Grand',
+    model: './models/ghost_w_tophat.glb'
   },
   {
     id: 'spider-1',
@@ -69,7 +86,9 @@ const decorations = [
     shape: 'octahedron',
     color: '#1a1a1a',
     scale: '2 2 2',
-    label: 'Giant Spider'
+    label: 'Giant Spider',
+    credit:'Spooky Spider by Bart',
+    model: './models/spooky_spider.glb'
   },
 
   {
@@ -77,7 +96,8 @@ const decorations = [
     lat: 56.815713, 
     lon: -2.618906,
    // shape: 'cone',
-     model: './models/witchs_hat.glb',
+    model: './models/jack_skellington.glb',
+    credit: "Witch's Hat by kolodzey ",
     //color: '#4b0082',
     scale: '4 6 4',
     label: 'Witch Hat'
@@ -87,7 +107,8 @@ const decorations = [
     lat: 56.816938,
     lon: -2.624491,
    // shape: 'cone',
-     model: 'models/witchs_hat.glb',
+    model: 'models/witchs_hat.glb',
+    credit: "Witch's Hat by kolodzey ",
     //color: '#4b0082',
     scale: '2 3 2',
     label: 'Witch Hat'
@@ -99,6 +120,8 @@ const decorations = [
     shape: 'box',
     color: '#eeeeee',
     scale: '1.5 3 1',
-    label: 'Skeleton'
+    label: 'Skeleton',
+    credit: 'Cartoon Skeleton by Overaction',
+    model: './models/free_animated_low_poly_cartoon_skeleton.glb'
   }
 ];
