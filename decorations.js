@@ -60,7 +60,7 @@ const decorations = [
   },
   {
     id: 'spider-1',
-    lat: 56.815528, 
+    lat: 56.815528,
     lon: -2.623951,
     shape: 'octahedron',
     color: '#1a1a1a',
@@ -80,7 +80,7 @@ const decorations = [
   },
   {
     id: 'witchhat-2',
-    lat: 56.816938, 
+    lat: 56.816938,
     lon: -2.624491,
    // shape: 'cone',
      model: 'models/witchs_hat.glb',

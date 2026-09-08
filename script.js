@@ -1,4 +1,4 @@
-y// ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
 // Phase 1 mock-up: prove that GPS-anchored AR positioning works, using plain
 // A-Frame primitives instead of real 3D models. Swap step: once positions
 // are confirmed good on a real walk, replace the shape-based entity builder

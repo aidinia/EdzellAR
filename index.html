@@ -15,6 +15,7 @@
        loading this page as normal — no behavior change for them. -->
   <script>
     (function () {
+      console.log(navigator.xr , typeof navigator.xr.isSessionSupported );
       if (!navigator.xr || typeof navigator.xr.isSessionSupported !== 'function') return;
       navigator.xr.isSessionSupported('immersive-ar').then(function (supported) {
         if (supported) window.location.replace('geo/');
