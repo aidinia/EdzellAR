@@ -274,9 +274,18 @@ function launchScene() {
 }
 
 function buildDecorationEntity(deco) {
-  const el = document.createElement('a-' + deco.shape);
+  let el;
+  if (deco.model) {
+    // Real Sketchfab (or any other) .glb/.gltf model — see the main
+    // project's script.js for the fuller comment; identical approach here.
+    el = document.createElement('a-entity');
+    el.setAttribute('gltf-model', `url(${deco.model})`);
+    if (deco.rotation) el.setAttribute('rotation', deco.rotation);
+  } else {
+    el = document.createElement('a-' + deco.shape);
+    el.setAttribute('color', deco.color);
+  }
   el.setAttribute('id', 'deco-' + deco.id);
-  el.setAttribute('color', deco.color);
   el.setAttribute('scale', deco.scale);
   const { x, z } = computeLocalXZ(deco);
   el.setAttribute('position', `${x} 0 ${z}`);

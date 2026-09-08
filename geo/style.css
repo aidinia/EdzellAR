@@ -64,9 +64,9 @@ html, body {
   /* DELIBERATELY changed on every deploy (color only, nothing functional) —
      tracked independently from the main project's button since this is a
      separate page. Bump on every change to this geo/ experiment.
-     Current: hot pink. */
-  background: #f73f9c;
-  color: #33051d;
+     Current: amber. */
+  background: #f7d43f;
+  color: #332b05;
   font-weight: 700;
   cursor: pointer;
 }
