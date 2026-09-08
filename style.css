@@ -76,9 +76,9 @@ html, body {
   /* DELIBERATELY changed on every deploy (color only, nothing functional) —
      a quick visual "is this actually the newest version?" check when
      reloading on a phone after a manual GitHub upload. Bump this any time
-     a change is made, even unrelated ones. Current: red. */
-  background: #f73f3f;
-  color: #330a0a;
+     a change is made, even unrelated ones. Current: orange-yellow. */
+  background: #f7a83f;
+  color: #331e05;
   font-weight: 700;
   cursor: pointer;
 }

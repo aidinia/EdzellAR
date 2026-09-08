@@ -6,6 +6,22 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <link rel="stylesheet" href="style.css">
 
+  <!-- Auto-route to the WebXR build (geo/) on devices that actually support
+       it (Chrome/Android + ARCore) — that version tracks via a real AR
+       session instead of raw compass, so it's the better experience where
+       it's available. Runs first, before any of this page's own scripts,
+       so capable phones bounce out with minimal wasted loading. Everything
+       else (iPhone, desktop, older Android/browsers) just continues
+       loading this page as normal — no behavior change for them. -->
+  <script>
+    (function () {
+      if (!navigator.xr || typeof navigator.xr.isSessionSupported !== 'function') return;
+      navigator.xr.isSessionSupported('immersive-ar').then(function (supported) {
+        if (supported) window.location.replace('geo/');
+      }).catch(function () { /* treat any error as unsupported, stay here */ });
+    })();
+  </script>
+
   <!-- A-Frame: 3D/WebXR scene framework.
        Pinned to 1.3.0, NOT the latest release: AR.js 3.4.5's internals still
        call THREE.PlaneBufferGeometry, which newer Three.js versions (bundled
