@@ -64,9 +64,9 @@ html, body {
   /* DELIBERATELY changed on every deploy (color only, nothing functional) —
      tracked independently from the main project's button since this is a
      separate page. Bump on every change to this geo/ experiment.
-     Current: turquoise. */
-  background: #3ff7e0;
-  color: #05332c;
+     Current: mustard. */
+  background: #c4a83f;
+  color: #262005;
   font-weight: 700;
   cursor: pointer;
 }

@@ -28,6 +28,16 @@ const recalibrateBtn = document.getElementById('recalibrate-btn');
 let origin = null;      // { lat, lon } read once at Start (or Recalibrate)
 let headingDeg = 0;     // compass bearing (0=N, 90=E) the device faced at that moment
 
+// Matches the main site's gps-camera maxDistance — decorations farther than
+// this (in meters, from wherever you last anchored) don't render at all.
+// IMPORTANT caveat specific to this build: unlike the main site, this is
+// only evaluated once, at Start/Recalibrate time, using your GPS position
+// at that moment — not continuously as you actually walk (WebXR tracks
+// your movement itself, not GPS, once a session is running). So walking
+// closer to a decoration that was hidden as too-far at anchor time won't
+// reveal it; tap Recalibrate once you're near it instead.
+const MAX_VISIBLE_METERS = 30;
+
 startBtn.addEventListener('click', start);
 debugToggle.addEventListener('click', () => { debugPanel.hidden = !debugPanel.hidden; });
 recalibrateBtn.addEventListener('click', recalibrate);
@@ -67,6 +77,15 @@ function rotateToLocal(north, east, heading0Deg) {
 function computeLocalXZ(deco) {
   const { north, east } = metersOffset(origin.lat, origin.lon, deco.lat, deco.lon);
   return rotateToLocal(north, east, headingDeg);
+}
+
+// Sets an entity's position from its decoration's coordinates, and hides it
+// entirely beyond MAX_VISIBLE_METERS — see that constant's comment for why
+// this is a one-time check rather than something that updates as you walk.
+function placeDecorationEntity(el, deco) {
+  const { x, z } = computeLocalXZ(deco);
+  el.setAttribute('position', `${x} 0 ${z}`);
+  el.setAttribute('visible', Math.hypot(x, z) <= MAX_VISIBLE_METERS);
 }
 
 // ---------------------------------------------------------------------------
@@ -214,8 +233,7 @@ async function recalibrate() {
     decorations.forEach((deco) => {
       const el = document.getElementById('deco-' + deco.id);
       if (!el) return;
-      const { x, z } = computeLocalXZ(deco);
-      el.setAttribute('position', `${x} 0 ${z}`);
+      placeDecorationEntity(el, deco);
     });
     updateDebugPanel();
   } finally {
@@ -320,8 +338,7 @@ function buildDecorationEntity(deco) {
   }
   el.setAttribute('id', 'deco-' + deco.id);
   el.setAttribute('scale', deco.scale);
-  const { x, z } = computeLocalXZ(deco);
-  el.setAttribute('position', `${x} 0 ${z}`);
+  placeDecorationEntity(el, deco);
 
   const label = document.createElement('a-text');
   label.setAttribute('value', deco.label);
