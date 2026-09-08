@@ -282,6 +282,11 @@ function launchScene() {
       // advance, so instead of dead-ending here, fall back to the main
       // AR.js site, which works far more broadly.
       console.error('Failed to enter WebXR AR session:', err);
+      // Remember this so index.html's redirect-in check stops sending this
+      // browser back here — without it, the two builds' checks disagreeing
+      // (isSessionSupported says yes, an actual session says no) creates an
+      // infinite redirect loop: main -> geo -> [fails] -> main -> geo -> ...
+      try { localStorage.setItem('edzellar-webxr-ar-failed', '1'); } catch (e) { /* storage unavailable — worst case the loop returns */ }
       alert('This device reported WebXR support but couldn’t actually start an AR session. Sending you to the main site instead.');
       window.location.replace('../');
     });

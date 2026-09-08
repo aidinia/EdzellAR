@@ -22,6 +22,16 @@
         bounceToMainSite();
         return;
       }
+      // If this browser already proved it can't actually open an AR
+      // session (set by this page's own script.js right before its
+      // fallback redirect), don't repeat the same failed attempt on a
+      // direct/bookmarked visit — go straight back to the main site.
+      try {
+        if (localStorage.getItem('edzellar-webxr-ar-failed')) {
+          bounceToMainSite();
+          return;
+        }
+      } catch (e) { /* storage unavailable, proceed with the normal check */ }
       if (!navigator.xr || typeof navigator.xr.isSessionSupported !== 'function') {
         bounceToMainSite();
         return;
