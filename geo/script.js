@@ -295,13 +295,24 @@ function launchScene() {
   else scene.addEventListener('loaded', enterAR, { once: true });
 }
 
+// decorations.js is shared with the main project (see README.md) and its
+// model paths are written relative to THAT page's location — the root
+// index.html, one folder up from here — since that's the file's natural
+// home. A bare relative path resolves against the current page's own URL,
+// so left as-is it'd look for the model inside geo/ itself. Absolute URLs
+// (a CDN link, or a leading slash) are left untouched.
+function resolveModelUrl(path) {
+  if (/^([a-z]+:)?\/\//i.test(path) || path.startsWith('/')) return path;
+  return '../' + path;
+}
+
 function buildDecorationEntity(deco) {
   let el;
   if (deco.model) {
     // Real Sketchfab (or any other) .glb/.gltf model — see the main
     // project's script.js for the fuller comment; identical approach here.
     el = document.createElement('a-entity');
-    el.setAttribute('gltf-model', `url(${deco.model})`);
+    el.setAttribute('gltf-model', `url(${resolveModelUrl(deco.model)})`);
     if (deco.rotation) el.setAttribute('rotation', deco.rotation);
   } else {
     el = document.createElement('a-' + deco.shape);
