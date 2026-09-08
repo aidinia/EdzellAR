@@ -1,4 +1,4 @@
-// ---------------------------------------------------------------------------
+y// ---------------------------------------------------------------------------
 // Phase 1 mock-up: prove that GPS-anchored AR positioning works, using plain
 // A-Frame primitives instead of real 3D models. Swap step: once positions
 // are confirmed good on a real walk, replace the shape-based entity builder
@@ -166,11 +166,24 @@ function launchScene() {
 }
 
 function buildDecorationEntity(deco) {
-  // deco.shape -> an A-Frame primitive tag (a-box, a-sphere, a-cone, ...).
-  // Later phases can instead check for `deco.model` and build an
-  // <a-entity gltf-model="url(...)"> here.
-  const el = document.createElement('a-' + deco.shape);
-  el.setAttribute('color', deco.color);
+  let el;
+  if (deco.model) {
+    // Real Sketchfab (or any other) .glb/.gltf model — A-Frame's built-in
+    // gltf-model component loads it, no extra library needed. Sketchfab
+    // exports aren't guaranteed to come out at any particular real-world
+    // size, so `scale` is still per-decoration and usually needs tuning by
+    // eye once you see it in AR.
+    el = document.createElement('a-entity');
+    el.setAttribute('gltf-model', `url(${deco.model})`);
+    if (deco.rotation) el.setAttribute('rotation', deco.rotation);
+  } else {
+    // Phase 1 fallback: deco.shape -> an A-Frame primitive tag (a-box,
+    // a-sphere, a-cone, ...). Lets decorations be swapped to real models
+    // one at a time — anything without a `model` field still renders as
+    // its placeholder shape.
+    el = document.createElement('a-' + deco.shape);
+    el.setAttribute('color', deco.color);
+  }
   el.setAttribute('scale', deco.scale);
   el.setAttribute('gps-entity-place', `latitude: ${deco.lat}; longitude: ${deco.lon};`);
 

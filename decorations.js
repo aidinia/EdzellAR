@@ -1,11 +1,28 @@
 // ---------------------------------------------------------------------------
-// Halloween decorations config — Phase 1 mock-up
+// Halloween decorations config — shared by both the main AR.js site and the
+// geo/ WebXR build (geo/index.html loads this same file via ../decorations.js
+// — don't duplicate it there).
 //
-// Each entry is one decoration placed at a real-world GPS coordinate.
-// `shape`/`color`/`scale` are stand-ins for now (Phase 1: prove positions
-// work). Later phases swap `shape` for a `model` field pointing at a
-// downloaded Sketchfab .glb file — the loader in script.js is already
-// written to handle either.
+// Each entry is one decoration placed at a real-world GPS coordinate, using
+// EITHER a placeholder primitive shape OR a real downloaded model:
+//
+//   shape/color — Phase 1 placeholder. `shape` is an A-Frame primitive name
+//     (box, sphere, cone, octahedron, ...) with `color` as a hex string.
+//
+//   model — a real 3D model instead, e.g. a Sketchfab .glb download. Set
+//     this to the file's path (e.g. 'models/pumpkin.glb') and drop `shape`/
+//     `color` — they're ignored once `model` is present. Optionally add a
+//     `rotation` string ('x y z' degrees) if the model isn't upright as
+//     exported.
+//
+//   scale — applies either way. Sketchfab exports aren't guaranteed to come
+//     out at any particular real-world size, so this usually needs tuning
+//     by eye once you actually see the model in AR (start around '1 1 1'
+//     and adjust, rather than assuming the placeholder shapes' '2 2 2'-ish
+//     values carry over).
+//
+// Decorations can be swapped one at a time — anything without a `model`
+// field keeps rendering as its placeholder shape.
 //
 // HOW TO GET REAL COORDINATES FOR YOUR NEIGHBOURHOOD:
 //   1. Open Google Maps, find the exact spot (a specific porch, tree, gate).
@@ -54,8 +71,9 @@ const decorations = [
     id: 'witchhat-1',
     lat: 56.815713, 
     lon: -2.618906,
-    shape: 'cone',
-    color: '#4b0082',
+   // shape: 'cone',
+     model: 'models/witchs_hat.glb',
+    //color: '#4b0082',
     scale: '2 3 2',
     label: 'Witch Hat'
   },
