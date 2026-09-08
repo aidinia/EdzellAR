@@ -42,8 +42,8 @@
 const decorations = [
   {
     id: 'pumpkin-1',
-    lat: 56.815539, 
-    lon: -2.619037,
+    lat: 56.815505, 
+    lon: -2.620957
     shape: 'sphere',
     color: '#ff7518', // pumpkin orange
     scale: '2 2 2',
@@ -51,8 +51,8 @@ const decorations = [
   },
   {
     id: 'ghost-1',
-    lat: 56.815751, 
-    lon: -2.619502,
+    lat: 56.814982, 
+    lon: -2.623312,
     shape: 'cone',
     color: '#f5f5f5',
     scale: '2 3 2',
@@ -60,13 +60,14 @@ const decorations = [
   },
   {
     id: 'spider-1',
-    lat: 56.815245, 
-    lon: -2.618543,
+    lat: 56.815528, 
+    lon: -2.623951,
     shape: 'octahedron',
     color: '#1a1a1a',
     scale: '2 2 2',
     label: 'Giant Spider'
   },
+
   {
     id: 'witchhat-1',
     lat: 56.815713, 
@@ -78,9 +79,19 @@ const decorations = [
     label: 'Witch Hat'
   },
   {
+    id: 'witchhat-2',
+    lat: 56.816938, 
+    lon: -2.624491,
+   // shape: 'cone',
+     model: 'models/witchs_hat.glb',
+    //color: '#4b0082',
+    scale: '2 3 2',
+    label: 'Witch Hat'
+  },
+  {
     id: 'skeleton-1',
-    lat: 56.8494727,
-    lon: -2.6443776,
+    lat: 56.817070, 
+    lon: -2.621830,
     shape: 'box',
     color: '#eeeeee',
     scale: '1.5 3 1',
