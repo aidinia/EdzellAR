@@ -64,9 +64,9 @@ html, body {
   /* DELIBERATELY changed on every deploy (color only, nothing functional) —
      tracked independently from the main project's button since this is a
      separate page. Bump on every change to this geo/ experiment.
-     Current: cornflower blue. */
-  background: #3f8ef7;
-  color: #051d33;
+     Current: coral. */
+  background: #f76a3f;
+  color: #331505;
   font-weight: 700;
   cursor: pointer;
 }

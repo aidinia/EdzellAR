@@ -275,9 +275,15 @@ function launchScene() {
 
   const enterAR = () => {
     scene.enterAR().catch((err) => {
-      statusEl.textContent = ''; // start screen is hidden; log instead
+      // isSessionSupported('immersive-ar') can say yes on a real Android
+      // phone/browser whose ARCore support isn't actually solid enough to
+      // open a session (seen in the wild on some budget/rugged phones +
+      // non-Chrome browsers) — there's no reliable way to predict that in
+      // advance, so instead of dead-ending here, fall back to the main
+      // AR.js site, which works far more broadly.
       console.error('Failed to enter WebXR AR session:', err);
-      alert('Could not start the AR session: ' + err.message);
+      alert('This device reported WebXR support but couldn’t actually start an AR session. Sending you to the main site instead.');
+      window.location.replace('../');
     });
   };
   if (scene.hasLoaded) enterAR();
