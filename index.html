@@ -15,7 +15,15 @@
        loading this page as normal — no behavior change for them. -->
   <script>
     (function () {
-      console.log(navigator.xr , typeof navigator.xr.isSessionSupported );
+      // isSessionSupported('immersive-ar') can report true even with no
+      // real AR camera capability — desktop/laptop Chrome does this
+      // whenever the OS has ANY OpenXR runtime registered (a VR headset
+      // driver, SteamVR, Windows Mixed Reality, a WebXR emulator
+      // extension...), since the spec doesn't require it to verify actual
+      // AR passthrough hardware. The geo/ build is Android/Chrome/ARCore
+      // only by design anyway, so also require an Android user agent —
+      // that alone rules out the desktop false-positive case.
+      if (!/Android/i.test(navigator.userAgent)) return;
       if (!navigator.xr || typeof navigator.xr.isSessionSupported !== 'function') return;
       navigator.xr.isSessionSupported('immersive-ar').then(function (supported) {
         if (supported) window.location.replace('geo/');
