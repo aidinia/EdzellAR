@@ -72,9 +72,9 @@ html, body {
   /* DELIBERATELY changed on every deploy (color only, nothing functional) —
      tracked independently from the main project's button since this is a
      separate page. Bump on every change to this geo/ experiment.
-     Current: seafoam. */
-  background: #6ef7c9;
-  color: #05332a;
+     Current: salmon. */
+  background: #f78e6e;
+  color: #331c10;
   font-weight: 700;
   cursor: pointer;
 }

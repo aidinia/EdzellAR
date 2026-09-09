@@ -332,6 +332,9 @@ function buildDecorationEntity(deco) {
     el = document.createElement('a-entity');
     el.setAttribute('gltf-model', `url(${resolveModelUrl(deco.model)})`);
     if (deco.rotation) el.setAttribute('rotation', deco.rotation);
+    // animation-mixer (loaded via aframe-extras in geo/index.html) plays
+    // any animation embedded in the model — gltf-model alone never does.
+    el.setAttribute('animation-mixer', '');
   } else {
     el = document.createElement('a-' + deco.shape);
     el.setAttribute('color', deco.color);
