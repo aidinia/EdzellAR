@@ -99,7 +99,7 @@ const decorations = [
     model: './models/jack_skellington.glb',
     credit: "Witch's Hat by kolodzey ",
     //color: '#4b0082',
-    scale: '1 1.5 1',
+    scale: '2 3 2',
     label: 'Witch Hat'
   },
   {
