@@ -176,6 +176,13 @@ function buildDecorationEntity(deco) {
     el = document.createElement('a-entity');
     el.setAttribute('gltf-model', `url(${deco.model})`);
     if (deco.rotation) el.setAttribute('rotation', deco.rotation);
+    // gltf-model on its own loads a static mesh and never plays any
+    // animation embedded in the file — animation-mixer (loaded via
+    // aframe-extras in index.html) is what actually drives that. Default
+    // settings (play every clip found, looped) are fine for a decoration
+    // that either has one obvious animation or none at all; harmless to
+    // set on a model with no animations.
+    el.setAttribute('animation-mixer', '');
   } else {
     // Phase 1 fallback: deco.shape -> an A-Frame primitive tag (a-box,
     // a-sphere, a-cone, ...). Lets decorations be swapped to real models

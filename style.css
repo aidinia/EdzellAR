@@ -156,9 +156,9 @@ body.credits-page {
   /* DELIBERATELY changed on every deploy (color only, nothing functional) —
      a quick visual "is this actually the newest version?" check when
      reloading on a phone after a manual GitHub upload. Bump this any time
-     a change is made, even unrelated ones. Current: amber-gold. */
-  background: #f7b83f;
-  color: #332405;
+     a change is made, even unrelated ones. Current: cerulean. */
+  background: #3f9ef7;
+  color: #051f33;
   font-weight: 700;
   cursor: pointer;
 }

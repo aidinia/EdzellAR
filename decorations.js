@@ -17,7 +17,9 @@
 //     and don't write these paths as if relative to geo/. Drop `shape`/
 //     `color` once `model` is set — they're ignored. Optionally add a
 //     `rotation` string ('x y z' degrees) if the model isn't upright as
-//     exported.
+//     exported. If the model has an embedded animation, it plays
+//     automatically (all clips, looped) via animation-mixer — no extra
+//     field needed for that.
 //
 //   credit — attribution info for a downloaded `model`, shown on
 //     credits.html (linked from both start screens). Either a plain string:

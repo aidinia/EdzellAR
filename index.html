@@ -47,6 +47,15 @@
   <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
   <!-- AR.js location-based build: adds gps-camera / gps-entity-place components -->
   <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.5/aframe/build/aframe-ar.js"></script>
+  <!-- Adds the animation-mixer component, which A-Frame's core gltf-model
+       does NOT include: gltf-model loads the mesh but never plays any
+       embedded animation clips on its own. Using the .loaders sub-bundle,
+       not the full package, since the full one also pulls in physics/
+       controls/pathfinding (630KB+) we don't use. Version picked close to
+       this page's A-Frame 1.3.0 era rather than the latest release — same
+       version-mismatch caution as AR.js above, not independently
+       re-verified against every newer A-Frame release. -->
+  <script src="https://cdn.jsdelivr.net/npm/aframe-extras@7.0.0/dist/aframe-extras.loaders.min.js"></script>
 </head>
 <body>
 
