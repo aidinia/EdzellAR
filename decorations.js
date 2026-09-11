@@ -19,7 +19,18 @@
 //     `rotation` string ('x y z' degrees) if the model isn't upright as
 //     exported. If the model has an embedded animation, it plays
 //     automatically (all clips, looped) via animation-mixer — no extra
-//     field needed for that.
+//     field needed for that. Set `animate: false` to opt a specific
+//     decoration out entirely, if its embedded animation looks wrong.
+//     For a more surgical fix — keep the animation but drop one specific
+//     bone's motion (e.g. a root/torso bone whose own rotation spins the
+//     whole model) — use `animation` instead of `animate`:
+//       animation: { clip: 'ClipName', excludeNode: 'BoneName' }
+//     `clip` picks one named clip instead of playing every clip in the
+//     file at once (which can look chaotic on a model that ships several —
+//     inspect the .glb's animations to find clip/node names; there's no
+//     in-app way to list them). `excludeNode` matches the node name in
+//     GLTFLoader's `NodeName.property` track naming, e.g. 'Body_03' drops
+//     both '.rotation' and '.quaternion' tracks for that node.
 //
 //   credit — attribution info for a downloaded `model`, shown on
 //     credits.html (linked from both start screens). Either a plain string:
@@ -94,12 +105,20 @@ const decorations = [
   },
 
   {
-    id: 'witchhat-1',
-    lat: 56.815713, 
+    id: 'witchhat-1', // TODO: this is actually a bat model (jack_skellington.glb is misnamed) — id/label/credit below are all leftover from before and wrong, fix once you have the real source
+    lat: 56.815713,
     lon: -2.618906,
    // shape: 'cone',
     model: './models/jack_skellington.glb',
     credit: "Witch's Hat by kolodzey ",
+    // Body_03 is this bat's torso bone — root of the whole skeleton (head,
+    // both wings, legs, tail) — and its own rotation track was spinning
+    // the entire bat as a unit. Dropping just that track keeps every
+    // other bone's motion (wing flaps, head, legs, tail) from the Flying
+    // clip intact. The file also ships Sleeping/Rest clips; pinned to
+    // Flying specifically since playing all three at once (the default)
+    // blended them together.
+    animation: { clip: 'Bat|Flying', excludeNode: 'Body_03' },
     //color: '#4b0082',
     scale: '2 3 2',
     label: 'Witch Hat'
@@ -125,5 +144,17 @@ const decorations = [
     label: 'Skeleton',
     credit: 'Cartoon Skeleton by Overaction',
     model: './models/free_animated_low_poly_cartoon_skeleton.glb'
+  }
+,
+  {
+    id: 'ghost-2',
+    lat: 56.814264, 
+    lon: -2.621112,
+    shape: 'box',
+    color: '#eeeeee',
+    scale: '1.5 3 1',
+    label: 'Ghost',
+    credit: 'Cute ghost by P3D',
+    model: './models/cute_ghost.glb'
   }
 ];

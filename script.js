@@ -25,21 +25,40 @@ const collectTotalEl = document.getElementById('collect-total');
 // conversation/commit history for why persistence was deliberately left out.
 const collectedIds = new Set();
 
+const COLLECTED_OPACITY = 0.35;
+
 function collectDecoration(deco, el) {
   if (collectedIds.has(deco.id)) return; // already collected, ignore repeat taps
   collectedIds.add(deco.id);
   collectCountEl.textContent = collectedIds.size;
 
-  // "Stays visible but marked" rather than disappearing: safest way to mark
-  // it that works identically for both placeholder shapes and loaded .glb
-  // models — a gltf-model's materials live inside the loaded scene graph,
-  // not on a component A-Frame's `material` can reach, so dimming the mesh
-  // itself would need per-model traversal. Changing the label is reliable
-  // either way.
   const label = el.querySelector('a-text');
   if (label) {
     label.setAttribute('value', deco.label + ' ✓');
     label.setAttribute('color', '#7ef7a0');
+  }
+
+  if (deco.model) {
+    // A .glb's materials live inside its own loaded scene graph, not on a
+    // component A-Frame's `material` can reach — a tap can only land on
+    // already-loaded geometry (that's what the raycaster hit), so the mesh
+    // is guaranteed to exist here. Each entity gets its own freshly-parsed
+    // materials even when two decorations share the same model file, so
+    // this can't accidentally dim another decoration too.
+    const root = el.getObject3D('mesh');
+    if (root) {
+      root.traverse((node) => {
+        if (!node.material) return;
+        (Array.isArray(node.material) ? node.material : [node.material]).forEach((mat) => {
+          mat.transparent = true;
+          mat.opacity = COLLECTED_OPACITY;
+        });
+      });
+    }
+  } else {
+    // Placeholder shapes have A-Frame's own material component, so this is
+    // just a normal attribute.
+    el.setAttribute('material', `opacity: ${COLLECTED_OPACITY}; transparent: true`);
   }
 }
 
@@ -78,6 +97,38 @@ AFRAME.registerComponent('smooth-rotation', {
     }
     this.smoothed.slerp(q, this.data.damping);
     q.copy(this.smoothed);
+  }
+});
+
+// A more surgical alternative to aframe-extras' animation-mixer, for a
+// model where one specific bone's motion needs removing without losing the
+// rest of the animation (e.g. a root/torso bone whose own rotation spins
+// the whole model, while every other bone's motion — wings, legs, head —
+// should keep playing). `clip` picks one named clip instead of the
+// generic component's default of playing every clip at once (which can
+// look chaotic if a model ships several, as this one does). `excludeNode`
+// drops any track targeting that node by name (matched by GLTFLoader's
+// `NodeName.property` track naming) before the clip ever plays.
+AFRAME.registerComponent('filtered-animation-mixer', {
+  schema: { clip: { default: '' }, excludeNode: { default: '' } },
+  init: function () {
+    this.el.addEventListener('model-loaded', (evt) => {
+      const model = evt.detail.model;
+      if (!model.animations || !model.animations.length) return;
+      let clips = this.data.clip
+        ? [THREE.AnimationClip.findByName(model.animations, this.data.clip)].filter(Boolean)
+        : model.animations;
+      if (this.data.excludeNode) {
+        clips.forEach((clip) => {
+          clip.tracks = clip.tracks.filter((t) => !t.name.startsWith(this.data.excludeNode + '.'));
+        });
+      }
+      this.mixer = new THREE.AnimationMixer(model);
+      clips.forEach((clip) => this.mixer.clipAction(clip).play());
+    });
+  },
+  tick: function (time, delta) {
+    if (this.mixer) this.mixer.update(delta / 1000);
   }
 });
 
@@ -212,12 +263,20 @@ function buildDecorationEntity(deco) {
     el.setAttribute('gltf-model', `url(${deco.model})`);
     if (deco.rotation) el.setAttribute('rotation', deco.rotation);
     // gltf-model on its own loads a static mesh and never plays any
-    // animation embedded in the file — animation-mixer (loaded via
-    // aframe-extras in index.html) is what actually drives that. Default
-    // settings (play every clip found, looped) are fine for a decoration
-    // that either has one obvious animation or none at all; harmless to
-    // set on a model with no animations.
-    el.setAttribute('animation-mixer', '');
+    // animation embedded in the file — one of the two mixers below (loaded
+    // via aframe-extras in index.html, or filtered-animation-mixer above)
+    // is what actually drives that.
+    if (deco.animation) {
+      // Needs surgery: a specific clip and/or a specific bone's motion
+      // excluded (e.g. a root bone whose rotation spins the whole model).
+      el.setAttribute('filtered-animation-mixer', deco.animation);
+    } else if (deco.animate !== false) {
+      // Default: play every clip found, looped — fine for a decoration
+      // that either has one obvious animation or none at all; harmless to
+      // set on a model with no animations. `animate: false` opts out
+      // entirely instead.
+      el.setAttribute('animation-mixer', '');
+    }
   } else {
     // Phase 1 fallback: deco.shape -> an A-Frame primitive tag (a-box,
     // a-sphere, a-cone, ...). Lets decorations be swapped to real models
