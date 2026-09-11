@@ -72,9 +72,9 @@ html, body {
   /* DELIBERATELY changed on every deploy (color only, nothing functional) —
      tracked independently from the main project's button since this is a
      separate page. Bump on every change to this geo/ experiment.
-     Current: coral pink. */
-  background: #f76e9c;
-  color: #33101d;
+     Current: wax white. */
+  background: #f7ecd4;
+  color: #332e1f;
   font-weight: 700;
   cursor: pointer;
 }
@@ -142,11 +142,24 @@ html, body {
   top: 8px;
   right: 8px;
   z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 6px;
   background: rgba(20, 8, 30, 0.75);
   border: 1px solid rgba(255, 210, 122, 0.4);
   color: #ffd27a;
   border-radius: 999px;
-  padding: 6px 14px;
+  padding: 6px 10px 6px 14px;
   font-size: 0.85rem;
   font-weight: 600;
+}
+
+#collect-reset {
+  background: transparent;
+  border: none;
+  color: #ffd27a;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 2px 4px;
+  cursor: pointer;
 }

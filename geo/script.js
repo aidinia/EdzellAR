@@ -27,6 +27,7 @@ const recalibrateBtn = document.getElementById('recalibrate-btn');
 const collectCounter = document.getElementById('collect-counter');
 const collectCountEl = document.getElementById('collect-count');
 const collectTotalEl = document.getElementById('collect-total');
+const collectResetBtn = document.getElementById('collect-reset');
 
 let origin = null;      // { lat, lon } read once at Start (or Recalibrate)
 let headingDeg = 0;     // compass bearing (0=N, 90=E) the device faced at that moment
@@ -58,39 +59,126 @@ AFRAME.registerComponent('filtered-animation-mixer', {
   }
 });
 
-// Resets every page load by design (no localStorage) — see the main
-// project's script.js for the fuller comment.
+// Saved on the device (localStorage), not per-session — see the main
+// project's script.js for the fuller comment. Same storage key there and
+// here: since both pages share an origin, progress collected on one build
+// shows up on the other too.
+const COLLECTED_STORAGE_KEY = 'edzellar-collected-ids';
 const collectedIds = new Set();
+try {
+  JSON.parse(localStorage.getItem(COLLECTED_STORAGE_KEY) || '[]').forEach((id) => collectedIds.add(id));
+} catch (e) { /* corrupt/unavailable storage — just start empty */ }
+
+function saveCollectedIds() {
+  try { localStorage.setItem(COLLECTED_STORAGE_KEY, JSON.stringify([...collectedIds])); } catch (e) { /* storage unavailable */ }
+}
 
 const COLLECTED_OPACITY = 0.35;
+const decorationEntities = new Map();
 
-function collectDecoration(deco, el) {
-  if (collectedIds.has(deco.id)) return;
-  collectedIds.add(deco.id);
-  collectCountEl.textContent = collectedIds.size;
+function setCollectedVisual(deco, el, collected) {
   const label = el.querySelector('a-text');
   if (label) {
-    label.setAttribute('value', deco.label + ' ✓');
-    label.setAttribute('color', '#7ef7a0');
+    label.setAttribute('value', collected ? deco.label + ' ✓' : deco.label);
+    label.setAttribute('color', collected ? '#7ef7a0' : '#ffffff');
   }
 
   // See the main project's script.js for the fuller comment on why .glb
   // models need direct traversal here instead of A-Frame's material
-  // component, and why this can't accidentally dim another decoration
+  // component, and why this can't accidentally affect another decoration
   // that happens to share the same model file.
+  const opacity = collected ? COLLECTED_OPACITY : 1;
   if (deco.model) {
     const root = el.getObject3D('mesh');
     if (root) {
       root.traverse((node) => {
         if (!node.material) return;
         (Array.isArray(node.material) ? node.material : [node.material]).forEach((mat) => {
-          mat.transparent = true;
-          mat.opacity = COLLECTED_OPACITY;
+          mat.transparent = collected;
+          mat.opacity = opacity;
         });
       });
     }
   } else {
-    el.setAttribute('material', `opacity: ${COLLECTED_OPACITY}; transparent: true`);
+    el.setAttribute('material', `opacity: ${opacity}; transparent: ${collected}`);
+  }
+}
+
+function collectDecoration(deco, el) {
+  if (collectedIds.has(deco.id)) return;
+  collectedIds.add(deco.id);
+  saveCollectedIds();
+  collectCountEl.textContent = collectedIds.size;
+  setCollectedVisual(deco, el, true);
+  updateGuidePath();
+}
+
+function resetProgress() {
+  if (collectedIds.size === 0) return;
+  if (!confirm(`Reset ${collectedIds.size} collected decoration${collectedIds.size === 1 ? '' : 's'} back to 0?`)) return;
+  collectedIds.forEach((id) => {
+    const entry = decorationEntities.get(id);
+    if (entry) setCollectedVisual(entry.deco, entry.el, false);
+  });
+  collectedIds.clear();
+  saveCollectedIds();
+  collectCountEl.textContent = 0;
+  updateGuidePath();
+}
+collectResetBtn.addEventListener('click', resetProgress);
+
+// ---------------------------------------------------------------------------
+// Guide path: candles leading toward whichever uncollected decoration is
+// currently nearest — see the main project's script.js for the fuller
+// comment. Identical logic here; the only difference is *why* it works:
+// this build's camera position is continuously updated by real WebXR
+// tracking every frame (not GPS), while each decoration's position was
+// computed once at anchor/recalibrate time and stays fixed — but both
+// still live in the same local scene coordinates, so the same
+// lerp-between-two-live-positions approach applies unchanged.
+// ---------------------------------------------------------------------------
+
+const NUM_CANDLES = 6;
+const CANDLE_MODEL = 'models/candles_set.glb';
+let cameraEl = null;
+let candleEntities = [];
+
+function updateGuidePath() {
+  if (!cameraEl || candleEntities.length === 0) return;
+
+  const remaining = decorations.filter((deco) => !collectedIds.has(deco.id));
+  let nearest = null;
+  remaining.forEach((deco) => {
+    const entry = decorationEntities.get(deco.id);
+    if (!entry) return;
+    const d = cameraEl.object3D.position.distanceTo(entry.el.object3D.position);
+    if (!nearest || d < nearest.d) nearest = { d, el: entry.el };
+  });
+
+  if (!nearest) {
+    candleEntities.forEach((c) => c.setAttribute('visible', false));
+    return;
+  }
+
+  const camPos = cameraEl.object3D.position;
+  const targetPos = nearest.el.object3D.position;
+  candleEntities.forEach((c, i) => {
+    const t = Math.pow((i + 1) / (NUM_CANDLES + 1), 2);
+    c.object3D.position.lerpVectors(camPos, targetPos, t);
+    c.setAttribute('visible', true);
+  });
+}
+
+function buildCandleEntities(scene) {
+  candleEntities = [];
+  for (let i = 0; i < NUM_CANDLES; i++) {
+    const c = document.createElement('a-entity');
+    c.setAttribute('gltf-model', `url(${resolveModelUrl(CANDLE_MODEL)})`);
+    c.setAttribute('scale', '0.4 0.4 0.4');
+    c.setAttribute('animation-mixer', '');
+    c.setAttribute('visible', false);
+    scene.appendChild(c);
+    candleEntities.push(c);
   }
 }
 
@@ -302,6 +390,7 @@ async function recalibrate() {
       placeDecorationEntity(el, deco);
     });
     updateDebugPanel();
+    updateGuidePath(); // decoration positions just changed, don't wait for the next interval tick
   } finally {
     recalibrateBtn.disabled = false;
     recalibrateBtn.textContent = original;
@@ -359,10 +448,15 @@ function launchScene() {
   camera.setAttribute('camera', '');
   camera.setAttribute('position', '0 1.6 0');
   scene.appendChild(camera);
+  cameraEl = camera;
 
   decorations.forEach((deco) => scene.appendChild(buildDecorationEntity(deco)));
+  buildCandleEntities(scene);
+  updateGuidePath();
+  setInterval(updateGuidePath, 300); // camera moves continuously via real WebXR tracking here — this is what picks that up
 
   collectTotalEl.textContent = decorations.length;
+  collectCountEl.textContent = collectedIds.size; // may be >0, restored from a previous visit
   collectCounter.hidden = false;
 
   sceneContainer.appendChild(scene);
@@ -425,6 +519,7 @@ function buildDecorationEntity(deco) {
   el.setAttribute('scale', deco.scale);
   el.classList.add('collectible');
   el.addEventListener('click', () => collectDecoration(deco, el));
+  decorationEntities.set(deco.id, { deco, el });
   placeDecorationEntity(el, deco);
 
   const label = document.createElement('a-text');
@@ -434,6 +529,14 @@ function buildDecorationEntity(deco) {
   label.setAttribute('position', '0 2 0');
   label.setAttribute('scale', '4 4 4');
   el.appendChild(label);
+
+  // Restoring "already collected" from a previous visit — see the main
+  // project's script.js for the fuller comment on the load-timing reason
+  // this needs to wait for model-loaded on a .glb specifically.
+  if (collectedIds.has(deco.id)) {
+    if (deco.model) el.addEventListener('model-loaded', () => setCollectedVisual(deco, el, true), { once: true });
+    else setCollectedVisual(deco, el, true);
+  }
 
   return el;
 }
