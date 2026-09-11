@@ -83,7 +83,6 @@ function collectDecoration(deco, el) {
   saveCollectedIds();
   collectCountEl.textContent = collectedIds.size;
   setCollectedVisual(deco, el, true);
-  updateGuidePath(); // re-aim at the next-nearest remaining one right away
 }
 
 function resetProgress() {
@@ -96,71 +95,8 @@ function resetProgress() {
   collectedIds.clear();
   saveCollectedIds();
   collectCountEl.textContent = 0;
-  updateGuidePath();
 }
 collectResetBtn.addEventListener('click', resetProgress);
-
-// ---------------------------------------------------------------------------
-// Guide path: candles leading toward whichever uncollected decoration is
-// currently nearest. Re-aims automatically once that one's collected —
-// there's no fixed order, just "nearest remaining."
-//
-// Both the camera and every decoration entity already have their live
-// position kept in the SAME local scene coordinate space — AR.js's
-// gps-camera writes the camera's real-world movement into its own
-// `position` attribute every fix, and gps-entity-place does the same for
-// each decoration relative to it. So this needs no lat/lon math of its
-// own: just read both entities' already-current object3D.position and
-// lerp between them. (geo/script.js's build works the same way, just via
-// its own one-time GPS+heading anchoring instead of AR.js — the candle
-// logic itself is identical in both files.)
-// ---------------------------------------------------------------------------
-
-const NUM_CANDLES = 6;
-const CANDLE_MODEL = 'models/candles_set.glb';
-let cameraEl = null;
-let candleEntities = [];
-
-function updateGuidePath() {
-  if (!cameraEl || candleEntities.length === 0) return;
-
-  const remaining = decorations.filter((deco) => !collectedIds.has(deco.id));
-  let nearest = null;
-  remaining.forEach((deco) => {
-    const entry = decorationEntities.get(deco.id);
-    if (!entry) return;
-    const d = cameraEl.object3D.position.distanceTo(entry.el.object3D.position);
-    if (!nearest || d < nearest.d) nearest = { d, el: entry.el };
-  });
-
-  if (!nearest) {
-    candleEntities.forEach((c) => c.setAttribute('visible', false));
-    return;
-  }
-
-  const camPos = cameraEl.object3D.position;
-  const targetPos = nearest.el.object3D.position;
-  candleEntities.forEach((c, i) => {
-    // Quadratic easing: gaps between candles grow the closer they are to
-    // the target, per request — not evenly spaced.
-    const t = Math.pow((i + 1) / (NUM_CANDLES + 1), 2);
-    c.object3D.position.lerpVectors(camPos, targetPos, t);
-    c.setAttribute('visible', true);
-  });
-}
-
-function buildCandleEntities(scene) {
-  candleEntities = [];
-  for (let i = 0; i < NUM_CANDLES; i++) {
-    const c = document.createElement('a-entity');
-    c.setAttribute('gltf-model', `url(${CANDLE_MODEL})`);
-    c.setAttribute('scale', '0.4 0.4 0.4'); // starting guess — tune by eye like every other model
-    c.setAttribute('animation-mixer', ''); // flame-flicker only (morph targets) — same safety check as other models
-    c.setAttribute('visible', false);
-    scene.appendChild(c);
-    candleEntities.push(c);
-  }
-}
 
 // Haversine distance in meters — used only for the debug readout below, to
 // answer "am I even close enough to any decoration to see it?" without
@@ -335,12 +271,8 @@ function launchScene() {
     }
   });
   scene.appendChild(camera);
-  cameraEl = camera;
 
   decorations.forEach((deco) => scene.appendChild(buildDecorationEntity(deco)));
-  buildCandleEntities(scene);
-  updateGuidePath();
-  setInterval(updateGuidePath, 300); // camera/decoration positions update on their own; this just re-reads them
   // NOTE: this is just the count of decorations queued into the scene, not
   // confirmation any of them actually placed near you — gps-entity-place
   // positions each one relative to your real GPS fix, which only exists
