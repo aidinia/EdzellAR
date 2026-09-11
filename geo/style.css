@@ -72,9 +72,9 @@ html, body {
   /* DELIBERATELY changed on every deploy (color only, nothing functional) —
      tracked independently from the main project's button since this is a
      separate page. Bump on every change to this geo/ experiment.
-     Current: wax white. */
-  background: #f7ecd4;
-  color: #332e1f;
+     Current: steel blue. */
+  background: #6e93b3;
+  color: #101d26;
   font-weight: 700;
   cursor: pointer;
 }

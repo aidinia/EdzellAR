@@ -110,7 +110,6 @@ function collectDecoration(deco, el) {
   saveCollectedIds();
   collectCountEl.textContent = collectedIds.size;
   setCollectedVisual(deco, el, true);
-  updateGuidePath();
 }
 
 function resetProgress() {
@@ -123,64 +122,8 @@ function resetProgress() {
   collectedIds.clear();
   saveCollectedIds();
   collectCountEl.textContent = 0;
-  updateGuidePath();
 }
 collectResetBtn.addEventListener('click', resetProgress);
-
-// ---------------------------------------------------------------------------
-// Guide path: candles leading toward whichever uncollected decoration is
-// currently nearest — see the main project's script.js for the fuller
-// comment. Identical logic here; the only difference is *why* it works:
-// this build's camera position is continuously updated by real WebXR
-// tracking every frame (not GPS), while each decoration's position was
-// computed once at anchor/recalibrate time and stays fixed — but both
-// still live in the same local scene coordinates, so the same
-// lerp-between-two-live-positions approach applies unchanged.
-// ---------------------------------------------------------------------------
-
-const NUM_CANDLES = 6;
-const CANDLE_MODEL = 'models/candles_set.glb';
-let cameraEl = null;
-let candleEntities = [];
-
-function updateGuidePath() {
-  if (!cameraEl || candleEntities.length === 0) return;
-
-  const remaining = decorations.filter((deco) => !collectedIds.has(deco.id));
-  let nearest = null;
-  remaining.forEach((deco) => {
-    const entry = decorationEntities.get(deco.id);
-    if (!entry) return;
-    const d = cameraEl.object3D.position.distanceTo(entry.el.object3D.position);
-    if (!nearest || d < nearest.d) nearest = { d, el: entry.el };
-  });
-
-  if (!nearest) {
-    candleEntities.forEach((c) => c.setAttribute('visible', false));
-    return;
-  }
-
-  const camPos = cameraEl.object3D.position;
-  const targetPos = nearest.el.object3D.position;
-  candleEntities.forEach((c, i) => {
-    const t = Math.pow((i + 1) / (NUM_CANDLES + 1), 2);
-    c.object3D.position.lerpVectors(camPos, targetPos, t);
-    c.setAttribute('visible', true);
-  });
-}
-
-function buildCandleEntities(scene) {
-  candleEntities = [];
-  for (let i = 0; i < NUM_CANDLES; i++) {
-    const c = document.createElement('a-entity');
-    c.setAttribute('gltf-model', `url(${resolveModelUrl(CANDLE_MODEL)})`);
-    c.setAttribute('scale', '0.4 0.4 0.4');
-    c.setAttribute('animation-mixer', '');
-    c.setAttribute('visible', false);
-    scene.appendChild(c);
-    candleEntities.push(c);
-  }
-}
 
 // Matches the main site's gps-camera maxDistance — decorations farther than
 // this (in meters, from wherever you last anchored) don't render at all.
@@ -390,7 +333,6 @@ async function recalibrate() {
       placeDecorationEntity(el, deco);
     });
     updateDebugPanel();
-    updateGuidePath(); // decoration positions just changed, don't wait for the next interval tick
   } finally {
     recalibrateBtn.disabled = false;
     recalibrateBtn.textContent = original;
@@ -448,12 +390,8 @@ function launchScene() {
   camera.setAttribute('camera', '');
   camera.setAttribute('position', '0 1.6 0');
   scene.appendChild(camera);
-  cameraEl = camera;
 
   decorations.forEach((deco) => scene.appendChild(buildDecorationEntity(deco)));
-  buildCandleEntities(scene);
-  updateGuidePath();
-  setInterval(updateGuidePath, 300); // camera moves continuously via real WebXR tracking here — this is what picks that up
 
   collectTotalEl.textContent = decorations.length;
   collectCountEl.textContent = collectedIds.size; // may be >0, restored from a previous visit
