@@ -72,9 +72,9 @@ html, body {
   /* DELIBERATELY changed on every deploy (color only, nothing functional) —
      tracked independently from the main project's button since this is a
      separate page. Bump on every change to this geo/ experiment.
-     Current: slate blue. */
-  background: #6e7ef7;
-  color: #10133b;
+     Current: coral pink. */
+  background: #f76e9c;
+  color: #33101d;
   font-weight: 700;
   cursor: pointer;
 }

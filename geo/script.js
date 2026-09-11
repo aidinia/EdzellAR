@@ -31,9 +31,38 @@ const collectTotalEl = document.getElementById('collect-total');
 let origin = null;      // { lat, lon } read once at Start (or Recalibrate)
 let headingDeg = 0;     // compass bearing (0=N, 90=E) the device faced at that moment
 
+// See the main project's script.js for the fuller comment — a more
+// surgical alternative to aframe-extras' animation-mixer for a model where
+// one specific bone's motion (e.g. a root/torso bone that spins the whole
+// model) needs excluding without losing the rest of the animation.
+AFRAME.registerComponent('filtered-animation-mixer', {
+  schema: { clip: { default: '' }, excludeNode: { default: '' } },
+  init: function () {
+    this.el.addEventListener('model-loaded', (evt) => {
+      const model = evt.detail.model;
+      if (!model.animations || !model.animations.length) return;
+      let clips = this.data.clip
+        ? [THREE.AnimationClip.findByName(model.animations, this.data.clip)].filter(Boolean)
+        : model.animations;
+      if (this.data.excludeNode) {
+        clips.forEach((clip) => {
+          clip.tracks = clip.tracks.filter((t) => !t.name.startsWith(this.data.excludeNode + '.'));
+        });
+      }
+      this.mixer = new THREE.AnimationMixer(model);
+      clips.forEach((clip) => this.mixer.clipAction(clip).play());
+    });
+  },
+  tick: function (time, delta) {
+    if (this.mixer) this.mixer.update(delta / 1000);
+  }
+});
+
 // Resets every page load by design (no localStorage) — see the main
 // project's script.js for the fuller comment.
 const collectedIds = new Set();
+
+const COLLECTED_OPACITY = 0.35;
 
 function collectDecoration(deco, el) {
   if (collectedIds.has(deco.id)) return;
@@ -43,6 +72,25 @@ function collectDecoration(deco, el) {
   if (label) {
     label.setAttribute('value', deco.label + ' ✓');
     label.setAttribute('color', '#7ef7a0');
+  }
+
+  // See the main project's script.js for the fuller comment on why .glb
+  // models need direct traversal here instead of A-Frame's material
+  // component, and why this can't accidentally dim another decoration
+  // that happens to share the same model file.
+  if (deco.model) {
+    const root = el.getObject3D('mesh');
+    if (root) {
+      root.traverse((node) => {
+        if (!node.material) return;
+        (Array.isArray(node.material) ? node.material : [node.material]).forEach((mat) => {
+          mat.transparent = true;
+          mat.opacity = COLLECTED_OPACITY;
+        });
+      });
+    }
+  } else {
+    el.setAttribute('material', `opacity: ${COLLECTED_OPACITY}; transparent: true`);
   }
 }
 
@@ -362,7 +410,13 @@ function buildDecorationEntity(deco) {
     if (deco.rotation) el.setAttribute('rotation', deco.rotation);
     // animation-mixer (loaded via aframe-extras in geo/index.html) plays
     // any animation embedded in the model — gltf-model alone never does.
-    el.setAttribute('animation-mixer', '');
+    // See the main project's script.js for the fuller comment on the
+    // filtered-animation-mixer / animate / animation-mixer trio below.
+    if (deco.animation) {
+      el.setAttribute('filtered-animation-mixer', deco.animation);
+    } else if (deco.animate !== false) {
+      el.setAttribute('animation-mixer', '');
+    }
   } else {
     el = document.createElement('a-' + deco.shape);
     el.setAttribute('color', deco.color);
