@@ -24,9 +24,27 @@ const dbgHeading = document.getElementById('dbg-heading');
 const dbgCount = document.getElementById('dbg-count');
 const dbgNearest = document.getElementById('dbg-nearest');
 const recalibrateBtn = document.getElementById('recalibrate-btn');
+const collectCounter = document.getElementById('collect-counter');
+const collectCountEl = document.getElementById('collect-count');
+const collectTotalEl = document.getElementById('collect-total');
 
 let origin = null;      // { lat, lon } read once at Start (or Recalibrate)
 let headingDeg = 0;     // compass bearing (0=N, 90=E) the device faced at that moment
+
+// Resets every page load by design (no localStorage) — see the main
+// project's script.js for the fuller comment.
+const collectedIds = new Set();
+
+function collectDecoration(deco, el) {
+  if (collectedIds.has(deco.id)) return;
+  collectedIds.add(deco.id);
+  collectCountEl.textContent = collectedIds.size;
+  const label = el.querySelector('a-text');
+  if (label) {
+    label.setAttribute('value', deco.label + ' ✓');
+    label.setAttribute('color', '#7ef7a0');
+  }
+}
 
 // Matches the main site's gps-camera maxDistance — decorations farther than
 // this (in meters, from wherever you last anchored) don't render at all.
@@ -281,6 +299,13 @@ function launchScene() {
   // at <body> so everything already in the page overlays correctly.
   scene.setAttribute('webxr', 'optionalFeatures: dom-overlay; overlayElement: body;');
   scene.setAttribute('renderer', 'colorManagement: true; alpha: true');
+  // Tap-to-collect. IMPORTANT: this is a real WebXR immersive-ar session,
+  // not a plain page — screen taps arrive as WebXR 'selectstart' input
+  // events, not ordinary mouse/touch events, so rayOrigin: mouse (what the
+  // non-XR main site uses) would never fire here. rayOrigin: xrselect is
+  // A-Frame's documented cursor mode specifically for handheld-AR taps.
+  scene.setAttribute('raycaster', 'objects: .collectible');
+  scene.setAttribute('cursor', 'rayOrigin: xrselect');
 
   const camera = document.createElement('a-entity');
   camera.setAttribute('camera', '');
@@ -288,6 +313,9 @@ function launchScene() {
   scene.appendChild(camera);
 
   decorations.forEach((deco) => scene.appendChild(buildDecorationEntity(deco)));
+
+  collectTotalEl.textContent = decorations.length;
+  collectCounter.hidden = false;
 
   sceneContainer.appendChild(scene);
 
@@ -341,6 +369,8 @@ function buildDecorationEntity(deco) {
   }
   el.setAttribute('id', 'deco-' + deco.id);
   el.setAttribute('scale', deco.scale);
+  el.classList.add('collectible');
+  el.addEventListener('click', () => collectDecoration(deco, el));
   placeDecorationEntity(el, deco);
 
   const label = document.createElement('a-text');

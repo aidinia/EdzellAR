@@ -72,9 +72,9 @@ html, body {
   /* DELIBERATELY changed on every deploy (color only, nothing functional) —
      tracked independently from the main project's button since this is a
      separate page. Bump on every change to this geo/ experiment.
-     Current: salmon. */
-  background: #f78e6e;
-  color: #331c10;
+     Current: slate blue. */
+  background: #6e7ef7;
+  color: #10133b;
   font-weight: 700;
   cursor: pointer;
 }
@@ -135,4 +135,18 @@ html, body {
   border-radius: 999px;
   padding: 8px 14px;
   font-size: 0.75rem;
+}
+
+#collect-counter {
+  position: fixed;
+  top: 8px;
+  right: 8px;
+  z-index: 20;
+  background: rgba(20, 8, 30, 0.75);
+  border: 1px solid rgba(255, 210, 122, 0.4);
+  color: #ffd27a;
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 0.85rem;
+  font-weight: 600;
 }

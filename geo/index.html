@@ -73,6 +73,11 @@
   </div>
   <button id="debug-toggle" hidden>debug</button>
 
+  <!-- Always visible once AR starts (unlike the debug panel) — tap a
+       decoration to collect it; this just shows progress. Resets on
+       reload, nothing saved between visits. -->
+  <div id="collect-counter" hidden>🎃 <span id="collect-count">0</span>/<span id="collect-total">0</span> collected</div>
+
   <div id="scene-container"></div>
 
   <!-- Shared with the main site one folder up — a single source of truth,
