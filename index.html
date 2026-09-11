@@ -82,6 +82,11 @@
   </div>
   <button id="debug-toggle" hidden>debug</button>
 
+  <!-- Always visible once AR starts (unlike the debug panel) — tap a
+       decoration to collect it; this just shows progress. Resets on
+       reload, nothing saved between visits. -->
+  <div id="collect-counter" hidden>🎃 <span id="collect-count">0</span>/<span id="collect-total">0</span> collected</div>
+
   <!-- The <a-scene> itself is created in JS, only after the Start button is
        tapped. If it existed in the page from load, AR.js would try to open
        the camera immediately on page load rather than after a user

@@ -156,9 +156,9 @@ body.credits-page {
   /* DELIBERATELY changed on every deploy (color only, nothing functional) —
      a quick visual "is this actually the newest version?" check when
      reloading on a phone after a manual GitHub upload. Bump this any time
-     a change is made, even unrelated ones. Current: cerulean. */
-  background: #3f9ef7;
-  color: #051f33;
+     a change is made, even unrelated ones. Current: pumpkin orange. */
+  background: #f7823f;
+  color: #331705;
   font-weight: 700;
   cursor: pointer;
 }
@@ -208,4 +208,18 @@ body.credits-page {
   border-radius: 999px;
   padding: 8px 14px;
   font-size: 0.75rem;
+}
+
+#collect-counter {
+  position: fixed;
+  top: 8px;
+  right: 8px;
+  z-index: 20;
+  background: rgba(20, 8, 30, 0.75);
+  border: 1px solid rgba(255, 210, 122, 0.4);
+  color: #ffd27a;
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 0.85rem;
+  font-weight: 600;
 }

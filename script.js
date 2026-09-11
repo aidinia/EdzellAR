@@ -17,6 +17,31 @@ const dbgLon = document.getElementById('dbg-lon');
 const dbgAcc = document.getElementById('dbg-acc');
 const dbgCount = document.getElementById('dbg-count');
 const dbgNearest = document.getElementById('dbg-nearest');
+const collectCounter = document.getElementById('collect-counter');
+const collectCountEl = document.getElementById('collect-count');
+const collectTotalEl = document.getElementById('collect-total');
+
+// Resets every page load by design (no localStorage) — see the
+// conversation/commit history for why persistence was deliberately left out.
+const collectedIds = new Set();
+
+function collectDecoration(deco, el) {
+  if (collectedIds.has(deco.id)) return; // already collected, ignore repeat taps
+  collectedIds.add(deco.id);
+  collectCountEl.textContent = collectedIds.size;
+
+  // "Stays visible but marked" rather than disappearing: safest way to mark
+  // it that works identically for both placeholder shapes and loaded .glb
+  // models — a gltf-model's materials live inside the loaded scene graph,
+  // not on a component A-Frame's `material` can reach, so dimming the mesh
+  // itself would need per-model traversal. Changing the label is reliable
+  // either way.
+  const label = el.querySelector('a-text');
+  if (label) {
+    label.setAttribute('value', deco.label + ' ✓');
+    label.setAttribute('color', '#7ef7a0');
+  }
+}
 
 // Haversine distance in meters — used only for the debug readout below, to
 // answer "am I even close enough to any decoration to see it?" without
@@ -132,6 +157,13 @@ function launchScene() {
   camera.setAttribute('gps-camera', 'gpsMinDistance: 8; positionMinAccuracy: 25; alert: true; maxDistance: 30');
   camera.setAttribute('rotation-reader', '');
   camera.setAttribute('smooth-rotation', '');
+  // Turns a screen tap into a 3D ray from the camera through that screen
+  // point (rayOrigin: mouse), tested against any entity with the
+  // 'collectible' class — the standard A-Frame idiom for tap-to-interact.
+  // Mobile browsers fire the necessary synthetic mouse/click events from a
+  // real touch tap on their own; nothing else needed for that to work.
+  camera.setAttribute('raycaster', 'objects: .collectible');
+  camera.setAttribute('cursor', 'rayOrigin: mouse; fuse: false');
   // AR.js dispatches this on `window`, not on the camera entity — it's a
   // plain window.dispatchEvent(new CustomEvent(...)) internally, which does
   // NOT bubble down to any element. Listening on `camera` here silently
@@ -161,6 +193,9 @@ function launchScene() {
   // coordinates in decorations.js: if you're not within visual range of
   // those placeholder points, nothing will appear on screen.
   dbgCount.textContent = decorations.length;
+
+  collectTotalEl.textContent = decorations.length;
+  collectCounter.hidden = false;
 
   sceneContainer.appendChild(scene);
 }
@@ -193,6 +228,8 @@ function buildDecorationEntity(deco) {
   }
   el.setAttribute('scale', deco.scale);
   el.setAttribute('gps-entity-place', `latitude: ${deco.lat}; longitude: ${deco.lon};`);
+  el.classList.add('collectible');
+  el.addEventListener('click', () => collectDecoration(deco, el));
 
   const label = document.createElement('a-text');
   label.setAttribute('value', deco.label);
