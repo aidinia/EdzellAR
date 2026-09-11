@@ -156,9 +156,9 @@ body.credits-page {
   /* DELIBERATELY changed on every deploy (color only, nothing functional) —
      a quick visual "is this actually the newest version?" check when
      reloading on a phone after a manual GitHub upload. Bump this any time
-     a change is made, even unrelated ones. Current: teal blue. */
-  background: #3fd4f7;
-  color: #052a33;
+     a change is made, even unrelated ones. Current: candlelight amber. */
+  background: #f7c23f;
+  color: #332705;
   font-weight: 700;
   cursor: pointer;
 }
@@ -215,11 +215,24 @@ body.credits-page {
   top: 8px;
   right: 8px;
   z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 6px;
   background: rgba(20, 8, 30, 0.75);
   border: 1px solid rgba(255, 210, 122, 0.4);
   color: #ffd27a;
   border-radius: 999px;
-  padding: 6px 14px;
+  padding: 6px 10px 6px 14px;
   font-size: 0.85rem;
   font-weight: 600;
+}
+
+#collect-reset {
+  background: transparent;
+  border: none;
+  color: #ffd27a;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 2px 4px;
+  cursor: pointer;
 }

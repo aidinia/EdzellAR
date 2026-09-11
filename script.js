@@ -20,45 +20,145 @@ const dbgNearest = document.getElementById('dbg-nearest');
 const collectCounter = document.getElementById('collect-counter');
 const collectCountEl = document.getElementById('collect-count');
 const collectTotalEl = document.getElementById('collect-total');
+const collectResetBtn = document.getElementById('collect-reset');
 
-// Resets every page load by design (no localStorage) — see the
-// conversation/commit history for why persistence was deliberately left out.
+// Saved on the device (localStorage), not per-session — closing the site
+// and coming back keeps progress. Same storage key as geo/script.js, and
+// since both pages are served from the same origin, progress collected on
+// one build shows up on the other too (relevant since the two auto-route
+// between each other by device capability). See resetProgress() for the
+// per-device "reset to 0" control this implies needing.
+const COLLECTED_STORAGE_KEY = 'edzellar-collected-ids';
 const collectedIds = new Set();
+try {
+  JSON.parse(localStorage.getItem(COLLECTED_STORAGE_KEY) || '[]').forEach((id) => collectedIds.add(id));
+} catch (e) { /* corrupt/unavailable storage — just start empty */ }
+
+function saveCollectedIds() {
+  try { localStorage.setItem(COLLECTED_STORAGE_KEY, JSON.stringify([...collectedIds])); } catch (e) { /* storage unavailable */ }
+}
 
 const COLLECTED_OPACITY = 0.35;
 
-function collectDecoration(deco, el) {
-  if (collectedIds.has(deco.id)) return; // already collected, ignore repeat taps
-  collectedIds.add(deco.id);
-  collectCountEl.textContent = collectedIds.size;
+// Tracks every built decoration entity by id so resetProgress() can find
+// and visually un-mark them without a fresh tap.
+const decorationEntities = new Map();
 
+// Applies (or removes) the "found this one" look — label text/color, and
+// opacity, the same visual state whether it was just tapped or is being
+// restored from a previous visit.
+function setCollectedVisual(deco, el, collected) {
   const label = el.querySelector('a-text');
   if (label) {
-    label.setAttribute('value', deco.label + ' ✓');
-    label.setAttribute('color', '#7ef7a0');
+    label.setAttribute('value', collected ? deco.label + ' ✓' : deco.label);
+    label.setAttribute('color', collected ? '#7ef7a0' : '#ffffff');
   }
 
+  const opacity = collected ? COLLECTED_OPACITY : 1;
   if (deco.model) {
     // A .glb's materials live inside its own loaded scene graph, not on a
-    // component A-Frame's `material` can reach — a tap can only land on
-    // already-loaded geometry (that's what the raycaster hit), so the mesh
-    // is guaranteed to exist here. Each entity gets its own freshly-parsed
-    // materials even when two decorations share the same model file, so
-    // this can't accidentally dim another decoration too.
+    // component A-Frame's `material` can reach. Each entity gets its own
+    // freshly-parsed materials even when two decorations share the same
+    // model file, so this can't accidentally affect another decoration.
     const root = el.getObject3D('mesh');
     if (root) {
       root.traverse((node) => {
         if (!node.material) return;
         (Array.isArray(node.material) ? node.material : [node.material]).forEach((mat) => {
-          mat.transparent = true;
-          mat.opacity = COLLECTED_OPACITY;
+          mat.transparent = collected;
+          mat.opacity = opacity;
         });
       });
     }
   } else {
     // Placeholder shapes have A-Frame's own material component, so this is
     // just a normal attribute.
-    el.setAttribute('material', `opacity: ${COLLECTED_OPACITY}; transparent: true`);
+    el.setAttribute('material', `opacity: ${opacity}; transparent: ${collected}`);
+  }
+}
+
+function collectDecoration(deco, el) {
+  if (collectedIds.has(deco.id)) return; // already collected, ignore repeat taps
+  collectedIds.add(deco.id);
+  saveCollectedIds();
+  collectCountEl.textContent = collectedIds.size;
+  setCollectedVisual(deco, el, true);
+  updateGuidePath(); // re-aim at the next-nearest remaining one right away
+}
+
+function resetProgress() {
+  if (collectedIds.size === 0) return;
+  if (!confirm(`Reset ${collectedIds.size} collected decoration${collectedIds.size === 1 ? '' : 's'} back to 0?`)) return;
+  collectedIds.forEach((id) => {
+    const entry = decorationEntities.get(id);
+    if (entry) setCollectedVisual(entry.deco, entry.el, false);
+  });
+  collectedIds.clear();
+  saveCollectedIds();
+  collectCountEl.textContent = 0;
+  updateGuidePath();
+}
+collectResetBtn.addEventListener('click', resetProgress);
+
+// ---------------------------------------------------------------------------
+// Guide path: candles leading toward whichever uncollected decoration is
+// currently nearest. Re-aims automatically once that one's collected —
+// there's no fixed order, just "nearest remaining."
+//
+// Both the camera and every decoration entity already have their live
+// position kept in the SAME local scene coordinate space — AR.js's
+// gps-camera writes the camera's real-world movement into its own
+// `position` attribute every fix, and gps-entity-place does the same for
+// each decoration relative to it. So this needs no lat/lon math of its
+// own: just read both entities' already-current object3D.position and
+// lerp between them. (geo/script.js's build works the same way, just via
+// its own one-time GPS+heading anchoring instead of AR.js — the candle
+// logic itself is identical in both files.)
+// ---------------------------------------------------------------------------
+
+const NUM_CANDLES = 6;
+const CANDLE_MODEL = 'models/candles_set.glb';
+let cameraEl = null;
+let candleEntities = [];
+
+function updateGuidePath() {
+  if (!cameraEl || candleEntities.length === 0) return;
+
+  const remaining = decorations.filter((deco) => !collectedIds.has(deco.id));
+  let nearest = null;
+  remaining.forEach((deco) => {
+    const entry = decorationEntities.get(deco.id);
+    if (!entry) return;
+    const d = cameraEl.object3D.position.distanceTo(entry.el.object3D.position);
+    if (!nearest || d < nearest.d) nearest = { d, el: entry.el };
+  });
+
+  if (!nearest) {
+    candleEntities.forEach((c) => c.setAttribute('visible', false));
+    return;
+  }
+
+  const camPos = cameraEl.object3D.position;
+  const targetPos = nearest.el.object3D.position;
+  candleEntities.forEach((c, i) => {
+    // Quadratic easing: gaps between candles grow the closer they are to
+    // the target, per request — not evenly spaced.
+    const t = Math.pow((i + 1) / (NUM_CANDLES + 1), 2);
+    c.object3D.position.lerpVectors(camPos, targetPos, t);
+    c.setAttribute('visible', true);
+  });
+}
+
+function buildCandleEntities(scene) {
+  candleEntities = [];
+  for (let i = 0; i < NUM_CANDLES; i++) {
+    const c = document.createElement('a-entity');
+    c.setAttribute('gltf-model', `url(${CANDLE_MODEL})`);
+    c.setAttribute('scale', '0.4 0.4 0.4'); // starting guess — tune by eye like every other model
+    c.setAttribute('animation-mixer', ''); // flame-flicker only (morph targets) — same safety check as other models
+    c.setAttribute('visible', false);
+    scene.appendChild(c);
+    candleEntities.push(c);
   }
 }
 
@@ -235,8 +335,12 @@ function launchScene() {
     }
   });
   scene.appendChild(camera);
+  cameraEl = camera;
 
   decorations.forEach((deco) => scene.appendChild(buildDecorationEntity(deco)));
+  buildCandleEntities(scene);
+  updateGuidePath();
+  setInterval(updateGuidePath, 300); // camera/decoration positions update on their own; this just re-reads them
   // NOTE: this is just the count of decorations queued into the scene, not
   // confirmation any of them actually placed near you — gps-entity-place
   // positions each one relative to your real GPS fix, which only exists
@@ -246,6 +350,7 @@ function launchScene() {
   dbgCount.textContent = decorations.length;
 
   collectTotalEl.textContent = decorations.length;
+  collectCountEl.textContent = collectedIds.size; // may be >0, restored from a previous visit
   collectCounter.hidden = false;
 
   sceneContainer.appendChild(scene);
@@ -289,6 +394,7 @@ function buildDecorationEntity(deco) {
   el.setAttribute('gps-entity-place', `latitude: ${deco.lat}; longitude: ${deco.lon};`);
   el.classList.add('collectible');
   el.addEventListener('click', () => collectDecoration(deco, el));
+  decorationEntities.set(deco.id, { deco, el });
 
   const label = document.createElement('a-text');
   label.setAttribute('value', deco.label);
@@ -297,6 +403,16 @@ function buildDecorationEntity(deco) {
   label.setAttribute('position', '0 2 0');
   label.setAttribute('scale', '4 4 4');
   el.appendChild(label);
+
+  // Restoring "already collected" from a previous visit — must come after
+  // the label above exists, since setCollectedVisual looks it up via
+  // querySelector. A placeholder shape's geometry exists immediately, but
+  // a .glb's mesh only exists once it's actually finished loading
+  // (asynchronously), so wait for that event instead of dimming nothing.
+  if (collectedIds.has(deco.id)) {
+    if (deco.model) el.addEventListener('model-loaded', () => setCollectedVisual(deco, el, true), { once: true });
+    else setCollectedVisual(deco, el, true);
+  }
 
   return el;
 }

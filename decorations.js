@@ -158,3 +158,12 @@ const decorations = [
     model: './models/cute_ghost.glb'
   }
 ];
+
+const background = [
+ 
+   {
+    label: 'Candles',
+    credit: 'Candles set by shuvalov.di ',
+    model: './models/candles_set.glb'
+  },
+];

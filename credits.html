@@ -20,8 +20,10 @@
     <ul id="credits-list" class="credits-list"></ul>
 
     <p id="no-models-note" class="credits-note" hidden>
-      No downloaded 3D models yet — every decoration is still a Phase 1
-      placeholder shape, so there's nothing to credit here yet.
+      No decoration has a downloaded 3D model yet — every one is still a
+      Phase 1 placeholder shape. (The guide-path candles below are a real
+      downloaded model regardless, since they're not tied to any one
+      decoration.)
     </p>
 
     <p class="credits-note">
@@ -43,19 +45,24 @@
     // decorations.js entries have been written both ways for the same file.
     const normalizeModelPath = (path) => path.replace(/^\.\//, '');
 
+
     const byModel = new Map();
-    decorations.filter((deco) => deco.model).forEach((deco) => {
-      const key = normalizeModelPath(deco.model);
+    const allEntries = decorations.filter((deco) => deco.model).concat(background);
+    allEntries.forEach((entry) => {
+      const key = normalizeModelPath(entry.model);
       if (!byModel.has(key)) {
         byModel.set(key, { labels: new Set(), count: 0, credit: null });
       }
       const group = byModel.get(key);
-      group.labels.add(deco.label);
+      group.labels.add(entry.label);
       group.count++;
-      if (!group.credit && deco.credit) group.credit = deco.credit;
+      if (!group.credit && entry.credit) group.credit = entry.credit;
     });
 
-    if (byModel.size === 0) {
+    // Checked separately from byModel.size, which now always includes the
+    // app's own assets (the candles) regardless of decorations.js content.
+    const hasDecorationModels = decorations.some((deco) => deco.model);
+    if (!hasDecorationModels) {
       document.getElementById('no-models-note').hidden = false;
     }
 
